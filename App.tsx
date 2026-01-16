@@ -5,7 +5,6 @@ import { GameStatus, Point } from './types';
 
 const CLEAN_THRESHOLD = 0.85;
 
-// Обновленный список из 10 максимально стабильных и популярных ID Unsplash
 const SCENIC_IMAGES = [
   "1464822759023-fed622ff2c3b", // Горный массив
   "1501854140801-50d01698950b", // Зеленые холмы
@@ -22,7 +21,7 @@ const SCENIC_IMAGES = [
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState<GameStatus>(GameStatus.PLAYING);
+  const [status, setStatus] = useState<GameStatus>(GameStatus.START);
   const [isDrawing, setIsDrawing] = useState(false);
   const [mousePos, setMousePos] = useState<Point>({ x: -100, y: -100 });
   const [bgIndex, setBgIndex] = useState(0);
@@ -30,12 +29,10 @@ const App: React.FC = () => {
   const lastCheckTime = useRef<number>(0);
   const retryCount = useRef<number>(0);
 
-  // Формируем URL. Добавляем sig для предотвращения проблем с кэшем, если картинка битая
   const currentImageUrl = useMemo(() => {
     return `https://images.unsplash.com/photo-${SCENIC_IMAGES[bgIndex]}?q=80&w=1800&auto=format&fit=crop`;
   }, [bgIndex]);
 
-  // Предзагрузка следующего изображения
   useEffect(() => {
     const nextIndex = (bgIndex + 1) % SCENIC_IMAGES.length;
     const nextUrl = `https://images.unsplash.com/photo-${SCENIC_IMAGES[nextIndex]}?q=80&w=1800&auto=format&fit=crop`;
@@ -49,11 +46,7 @@ const App: React.FC = () => {
     return Math.max(80, Math.min(size, 180));
   }, []);
 
-  const initCanvas = useCallback(() => {
-    setBgIndex((prev) => (prev + 1) % SCENIC_IMAGES.length);
-    setIsImgLoading(true);
-    retryCount.current = 0;
-
+  const setupCanvasLayer = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -73,27 +66,33 @@ const App: React.FC = () => {
     for (let i = 0; i < 8000; i++) {
       ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
     }
-
     setProgress(0);
-    setStatus(GameStatus.PLAYING);
   }, []);
+
+  const startGame = () => {
+    audioService.startScrubbing();
+    audioService.stopScrubbing();
+    setStatus(GameStatus.PLAYING);
+  };
+
+  const nextWindow = () => {
+    setBgIndex((prev) => (prev + 1) % SCENIC_IMAGES.length);
+    setIsImgLoading(true);
+    retryCount.current = 0;
+    setupCanvasLayer();
+    setStatus(GameStatus.PLAYING);
+  };
 
   useEffect(() => {
-    const handleResize = () => {
-      if (canvasRef.current) {
-        // Сохраняем содержимое при ресайзе или просто перерисовываем
-        const canvas = canvasRef.current;
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
-    };
+    setupCanvasLayer();
+    const handleResize = () => setupCanvasLayer();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [setupCanvasLayer]);
 
   const calculateProgress = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || status !== GameStatus.PLAYING) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -110,11 +109,11 @@ const App: React.FC = () => {
       setStatus(GameStatus.CLEAN);
       audioService.stopScrubbing();
     }
-  }, []);
+  }, [status]);
 
   const scrub = (x: number, y: number) => {
     const canvas = canvasRef.current;
-    if (!canvas || status === GameStatus.CLEAN) return;
+    if (!canvas || status !== GameStatus.PLAYING) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -136,6 +135,7 @@ const App: React.FC = () => {
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (status !== GameStatus.PLAYING) return;
     audioService.startScrubbing();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setIsDrawing(true);
@@ -144,8 +144,6 @@ const App: React.FC = () => {
   };
 
   const handleImageError = () => {
-    console.warn(`Картинка ${SCENIC_IMAGES[bgIndex]} не загрузилась. Пробуем следующую...`);
-    // Чтобы не уйти в бесконечный цикл, если вдруг всё сломалось
     if (retryCount.current < SCENIC_IMAGES.length) {
       retryCount.current++;
       setBgIndex((prev) => (prev + 1) % SCENIC_IMAGES.length);
@@ -163,10 +161,9 @@ const App: React.FC = () => {
       onPointerUp={() => { 
         setIsDrawing(false); 
         audioService.stopScrubbing(); 
-        calculateProgress(); 
+        if (status === GameStatus.PLAYING) calculateProgress(); 
       }}
     >
-      {/* Фоновое изображение */}
       <img 
         src={currentImageUrl} 
         alt=""
@@ -179,41 +176,62 @@ const App: React.FC = () => {
         onError={handleImageError}
       />
 
-      {/* Индикатор загрузки фото */}
       {isImgLoading && (
         <div className="absolute inset-0 z-0 flex items-center justify-center text-white/20 text-[10px] uppercase tracking-widest animate-pulse font-bold">
-          Загрузка пейзажа...
+          Загрузка...
         </div>
       )}
 
-      {/* Канвас со "стеклом" */}
       <canvas 
         ref={canvasRef} 
         className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
       />
 
-      {/* Прогресс */}
-      <div className="absolute top-6 left-6 z-20 pointer-events-none select-none">
-        <div className="bg-black/40 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-            Очищено: <span className="text-white">{progress}%</span>
-          </p>
+      {status === GameStatus.PLAYING && (
+        <div className="absolute top-6 left-6 z-20 pointer-events-none select-none">
+          <div className="bg-black/40 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+              Очищено: <span className="text-white">{progress}%</span>
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Кнопка сброса */}
-      <div className="absolute top-6 right-6 z-20">
-        <button 
-          onClick={(e) => { e.stopPropagation(); initCanvas(); }} 
-          className="bg-black/40 hover:bg-black/50 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90"
-          title="Сбросить"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-            <path d="M21 3v5h-5" />
-          </svg>
-        </button>
-      </div>
+      {status === GameStatus.PLAYING && (
+        <div className="absolute top-6 right-6 z-20">
+          <button 
+            onClick={(e) => { e.stopPropagation(); setupCanvasLayer(); }} 
+            className="bg-black/40 hover:bg-black/50 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Начальный экран */}
+      {status === GameStatus.START && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/20 backdrop-blur-[2px]">
+          <div className="bg-white/90 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-black mb-2 text-zinc-900 tracking-tight uppercase">Окно запотело</h2>
+            <p className="text-zinc-500 text-[11px] mb-8 leading-relaxed font-medium uppercase tracking-wider">Протри стекло, чтобы увидеть пейзаж</p>
+            <button 
+              onClick={(e) => { e.stopPropagation(); startGame(); }} 
+              className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[12px] tracking-[0.2em] uppercase shadow-xl"
+            >
+              Начать
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Экран победы */}
       {status === GameStatus.CLEAN && (
@@ -226,7 +244,7 @@ const App: React.FC = () => {
             </div>
             <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Идеально чисто</h2>
             <button 
-              onClick={(e) => { e.stopPropagation(); initCanvas(); }} 
+              onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
               className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[11px] tracking-widest uppercase shadow-xl"
             >
               Следующее окно
@@ -235,7 +253,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Курсор-кисть */}
       <div 
         className="cursor-brush" 
         style={{ 
@@ -243,7 +260,7 @@ const App: React.FC = () => {
           top: mousePos.y, 
           width: currentBrushSize, 
           height: currentBrushSize,
-          opacity: (status === GameStatus.CLEAN || isDrawing) ? 0 : 0.4,
+          opacity: (status !== GameStatus.PLAYING || isDrawing) ? 0 : 0.4,
           background: 'radial-gradient(circle, rgba(255,255,255,0.7) 0%, transparent 70%)',
           border: '1px solid rgba(255,255,255,0.2)'
         }} 
