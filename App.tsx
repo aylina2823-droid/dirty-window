@@ -1,22 +1,32 @@
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
 
-const BRUSH_SIZE = 50;
 const CLEAN_THRESHOLD = 0.85;
-const BACKGROUND_URL = "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=2070&auto=format&fit=crop";
+// Используем надежный URL
+const BACKGROUND_URL = "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=1200&auto=format&fit=crop";
 
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<GameStatus>(GameStatus.PLAYING);
   const [isDrawing, setIsDrawing] = useState(false);
   const [mousePos, setMousePos] = useState<Point>({ x: -100, y: -100 });
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const lastCheckTime = useRef<number>(0);
+  const imageLoaded = useRef(false);
 
-  // Initialize Canvas Grime
+  const currentBrushSize = useMemo(() => {
+    const minSide = Math.min(windowSize.width, windowSize.height);
+    let adaptiveSize = Math.floor(minSide * 0.07);
+    const isDesktop = window.matchMedia('(pointer: fine)').matches;
+    if (isDesktop) {
+      adaptiveSize = Math.floor(adaptiveSize * 1.5);
+    }
+    return Math.max(50, Math.min(adaptiveSize, 180));
+  }, [windowSize]);
+
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -25,32 +35,20 @@ const App: React.FC = () => {
 
     const width = window.innerWidth;
     const height = window.innerHeight;
+    setWindowSize({ width, height });
     canvas.width = width;
     canvas.height = height;
 
-    // Base color - dirty grayish brown
-    ctx.fillStyle = 'rgba(70, 65, 60, 0.98)';
+    // Заливка грязью
+    ctx.fillStyle = 'rgba(65, 60, 55, 0.97)';
     ctx.fillRect(0, 0, width, height);
 
-    // Add noise and texture
-    for (let i = 0; i < 50000; i++) {
+    // Текстура шума
+    for (let i = 0; i < 40000; i++) {
       const x = Math.random() * width;
       const y = Math.random() * height;
-      const opacity = Math.random() * 0.2;
-      ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-      ctx.fillRect(x, y, 2, 2);
-    }
-
-    // Add some "smudges"
-    for (let i = 0; i < 20; i++) {
-      const x = Math.random() * width;
-      const y = Math.random() * height;
-      const radius = Math.random() * 200 + 100;
-      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      gradient.addColorStop(0, 'rgba(40, 35, 30, 0.3)');
-      gradient.addColorStop(1, 'transparent');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.15})`;
+      ctx.fillRect(x, y, 1, 1);
     }
 
     setProgress(0);
@@ -59,8 +57,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     initCanvas();
-    window.addEventListener('resize', initCanvas);
-    return () => window.removeEventListener('resize', initCanvas);
+    const handleResize = () => initCanvas();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [initCanvas]);
 
   const calculateProgress = useCallback(() => {
@@ -69,16 +68,13 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Performance optimization: sample pixels instead of checking every single one
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     let transparentCount = 0;
-    const sampleRate = 20; // Check every 20th pixel to save CPU
+    const sampleRate = 30; 
 
     for (let i = 3; i < data.length; i += 4 * sampleRate) {
-      if (data[i] === 0) {
-        transparentCount++;
-      }
+      if (data[i] === 0) transparentCount++;
     }
 
     const totalSampled = data.length / (4 * sampleRate);
@@ -99,27 +95,28 @@ const App: React.FC = () => {
     if (!ctx) return;
 
     ctx.globalCompositeOperation = 'destination-out';
-    
-    // Create a softer brush using radial gradient
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, BRUSH_SIZE);
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, currentBrushSize);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.7)');
+    gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.4)');
     gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
     
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(x, y, BRUSH_SIZE, 0, Math.PI * 2);
+    ctx.arc(x, y, currentBrushSize, 0, Math.PI * 2);
     ctx.fill();
 
-    // Throttle progress check
     const now = Date.now();
-    if (now - lastCheckTime.current > 300) {
+    if (now - lastCheckTime.current > 200) {
       calculateProgress();
       lastCheckTime.current = now;
     }
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    // ВАЖНО: Активируем звук при первом касании
+    audioService.init();
+    
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setIsDrawing(true);
     setMousePos({ x: e.clientX, y: e.clientY });
     scrub(e.clientX, e.clientY);
@@ -133,7 +130,8 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
+    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch (err) {}
     setIsDrawing(false);
     audioService.stopScrubbing();
     calculateProgress();
@@ -141,79 +139,74 @@ const App: React.FC = () => {
 
   return (
     <div 
-      ref={containerRef}
-      className="relative w-screen h-screen overflow-hidden bg-black cursor-none"
+      className="relative w-full h-full overflow-hidden bg-black touch-none select-none"
+      style={{ touchAction: 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-      {/* Background Image Layer */}
       <img 
         src={BACKGROUND_URL} 
-        alt="Beautiful landscape"
-        className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+        alt="View"
+        onLoad={() => { imageLoaded.current = true; }}
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
       />
 
-      {/* Dirt Canvas Layer */}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 transition-opacity duration-1000 ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`}
+        className={`absolute inset-0 z-10 transition-opacity duration-1000 ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`}
       />
 
-      {/* UI Overlay */}
-      <div className="absolute top-0 left-0 p-6 pointer-events-none">
-        <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-          <p className="text-white text-sm font-medium tracking-wider">
-            {status === GameStatus.CLEAN ? 'SPARKLING CLEAN!' : `CLEANED: ${progress}%`}
+      <div className="absolute top-0 left-0 p-4 z-20 pointer-events-none">
+        <div className="bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-lg">
+          <p className="text-white text-xs font-bold tracking-widest uppercase">
+            {status === GameStatus.CLEAN ? '✨ Window Cleaned!' : `Cleaned: ${progress}%`}
           </p>
         </div>
       </div>
 
-      <div className="absolute top-0 right-0 p-6">
+      <div className="absolute top-0 right-0 p-4 z-20">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            initCanvas();
-          }}
-          className="bg-white/10 hover:bg-white/20 active:scale-95 transition-all backdrop-blur-md p-3 rounded-full border border-white/30 text-white flex items-center justify-center group"
-          title="Reset Window"
+          onClick={(e) => { e.stopPropagation(); initCanvas(); }}
+          className="bg-white/10 hover:bg-white/20 active:scale-90 transition-all backdrop-blur-md p-3 rounded-full border border-white/20 text-white flex items-center justify-center shadow-lg"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-180 transition-transform duration-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
             <path d="M21 3v5h-5" />
           </svg>
         </button>
       </div>
 
-      {/* Victory Message */}
       {status === GameStatus.CLEAN && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none animate-in fade-in zoom-in duration-1000">
-           <div className="bg-white/10 backdrop-blur-xl p-12 rounded-3xl border border-white/20 flex flex-col items-center shadow-2xl">
-              <div className="bg-green-500 text-white rounded-full p-4 mb-6 shadow-lg shadow-green-500/50">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-6 animate-in fade-in zoom-in duration-700 pointer-events-none">
+           <div className="bg-black/60 backdrop-blur-2xl p-10 rounded-[2.5rem] border border-white/10 flex flex-col items-center shadow-2xl text-center">
+              <div className="bg-green-500 text-white rounded-full p-4 mb-6 shadow-xl shadow-green-500/40">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">Window Cleaned!</h1>
-              <p className="text-white/60 text-lg">You reveal the beauty beneath the grime.</p>
+              <h1 className="text-3xl font-black text-white mb-2 tracking-tight">Perfect!</h1>
+              <p className="text-white/70 text-base mb-8">The glass is now crystal clear.</p>
               <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  initCanvas();
-                }}
-                className="mt-8 bg-white text-black font-semibold py-3 px-8 rounded-full hover:bg-gray-200 pointer-events-auto active:scale-95 transition-all"
+                onClick={(e) => { e.stopPropagation(); initCanvas(); }}
+                className="bg-white text-black font-bold py-4 px-10 rounded-2xl hover:bg-gray-100 pointer-events-auto active:scale-95 transition-all shadow-xl"
               >
-                Clean Again
+                Start Over
               </button>
            </div>
         </div>
       )}
 
-      {/* Custom Cursor Brush */}
+      {/* Курсор виден только на десктопе (скрыт через CSS для touch) */}
       <div 
         className={`cursor-brush ${isDrawing ? 'active' : ''}`}
-        style={{ left: mousePos.x, top: mousePos.y }}
+        style={{ 
+          left: mousePos.x, 
+          top: mousePos.y,
+          width: isDrawing ? currentBrushSize * 1.2 : currentBrushSize,
+          height: isDrawing ? currentBrushSize * 1.2 : currentBrushSize
+        }}
       />
     </div>
   );
