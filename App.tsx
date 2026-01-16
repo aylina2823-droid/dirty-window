@@ -4,7 +4,18 @@ import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
 
 const CLEAN_THRESHOLD = 0.85;
-const BACKGROUND_URL = `https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1600&q=80`;
+
+// Verified Unsplash IDs that are colorful and high-quality
+const SCENIC_IMAGES = [
+  "1470071459604-3b5ec3a7fe05",
+  "1441974231531-c6227db76b6e",
+  "1501785887741-f67a99599682",
+  "1472214103551-237f51d073d2",
+  "1469474968028-56623f02e42e",
+  "1447752875215-b2761acb3c5d",
+  "1586348943549-c92dd457c647",
+  "1426604966149-8084e0af976a"
+];
 
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -12,17 +23,25 @@ const App: React.FC = () => {
   const [status, setStatus] = useState<GameStatus>(GameStatus.PLAYING);
   const [isDrawing, setIsDrawing] = useState(false);
   const [mousePos, setMousePos] = useState<Point>({ x: -100, y: -100 });
-  const [isImageLoading, setIsImageLoading] = useState(true);
+  const [bgId, setBgId] = useState(SCENIC_IMAGES[0]);
   const lastCheckTime = useRef<number>(0);
+
+  // Use a stable width for loading
+  const currentImageUrl = useMemo(() => {
+    return `https://images.unsplash.com/photo-${bgId}?auto=format&fit=crop&w=1200&q=70`;
+  }, [bgId]);
 
   const currentBrushSize = useMemo(() => {
     const minSide = Math.min(window.innerWidth, window.innerHeight);
-    let size = Math.floor(minSide * 0.12);
-    if (window.matchMedia('(pointer: fine)').matches) size *= 1.3;
-    return Math.max(70, Math.min(size, 250));
+    let size = Math.floor(minSide * 0.16);
+    return Math.max(80, Math.min(size, 180));
   }, []);
 
   const initCanvas = useCallback(() => {
+    // Pick next image
+    const others = SCENIC_IMAGES.filter(id => id !== bgId);
+    setBgId(others[Math.floor(Math.random() * others.length)]);
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -31,29 +50,36 @@ const App: React.FC = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Рисуем текстуру грязи
-    ctx.fillStyle = '#7d7874'; 
+    // FOG LAYER
+    ctx.globalCompositeOperation = 'source-over';
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, 'rgba(240, 245, 255, 0.97)');
+    gradient.addColorStop(1, 'rgba(220, 225, 240, 0.95)');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    for (let i = 0; i < 20000; i++) {
-      ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
-    }
-    
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    // Texture
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     for (let i = 0; i < 10000; i++) {
       ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
     }
 
     setProgress(0);
     setStatus(GameStatus.PLAYING);
-  }, []);
+  }, [bgId]);
 
   useEffect(() => {
     initCanvas();
-    window.addEventListener('resize', initCanvas);
-    return () => window.removeEventListener('resize', initCanvas);
-  }, [initCanvas]);
+    const handleResize = () => {
+      if (canvasRef.current) {
+        // Warning: Resize clears canvas content normally, 
+        // but for a mini-game it's usually acceptable to just reset.
+        initCanvas();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const calculateProgress = useCallback(() => {
     const canvas = canvasRef.current;
@@ -84,70 +110,104 @@ const App: React.FC = () => {
 
     ctx.globalCompositeOperation = 'destination-out';
     const grad = ctx.createRadialGradient(x, y, 0, x, y, currentBrushSize);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    grad.addColorStop(0.6, 'rgba(255, 255, 255, 0.7)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(x, y, currentBrushSize, 0, Math.PI * 2);
     ctx.fill();
 
-    if (Date.now() - lastCheckTime.current > 100) {
+    if (Date.now() - lastCheckTime.current > 120) {
       calculateProgress();
       lastCheckTime.current = Date.now();
     }
   };
 
-  const handleDown = (e: React.PointerEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
     audioService.startScrubbing();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setIsDrawing(true);
-    scrub(e.clientX, e.clientY);
-  };
-
-  const handleMove = (e: React.PointerEvent) => {
     setMousePos({ x: e.clientX, y: e.clientY });
-    if (isDrawing) scrub(e.clientX, e.clientY);
+    scrub(e.clientX, e.clientY);
   };
 
   return (
     <div 
       className="fixed inset-0 w-full h-full bg-zinc-900 overflow-hidden touch-none"
-      onPointerDown={handleDown}
-      onPointerMove={handleMove}
-      onPointerUp={() => { setIsDrawing(false); audioService.stopScrubbing(); }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={(e) => {
+        setMousePos({ x: e.clientX, y: e.clientY });
+        if (isDrawing) scrub(e.clientX, e.clientY);
+      }}
+      onPointerUp={() => { setIsDrawing(false); audioService.stopScrubbing(); calculateProgress(); }}
     >
-      <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
-        {isImageLoading && <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />}
-      </div>
-      
+      {/* Background Image - Z-INDEX 0 */}
       <img 
-        src={BACKGROUND_URL} 
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
-        onLoad={() => setIsImageLoading(false)}
+        src={currentImageUrl} 
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover block pointer-events-none z-0"
+        style={{ 
+          filter: status === GameStatus.CLEAN ? 'none' : `blur(${Math.max(0, 25 - progress * 0.5)}px)`,
+          transition: 'filter 0.3s ease-out'
+        }}
       />
 
-      <canvas ref={canvasRef} className={`absolute inset-0 z-10 transition-opacity duration-1000 ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} />
+      {/* Steam Canvas - Z-INDEX 10 */}
+      <canvas 
+        ref={canvasRef} 
+        className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
+      />
 
-      <div className="absolute top-6 left-6 z-20 bg-black/50 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-white text-[10px] font-bold uppercase tracking-widest">
-        Progress: {progress}%
+      {/* UI - Z-INDEX 20 */}
+      <div className="absolute top-6 left-6 z-20 pointer-events-none select-none">
+        <div className="bg-white/20 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+            Cleaned: <span className="text-white">{progress}%</span>
+          </p>
+        </div>
       </div>
 
       <div className="absolute top-6 right-6 z-20">
-        <button onClick={initCanvas} className="bg-white/10 p-4 rounded-xl border border-white/10 text-white active:scale-90 transition-transform">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
+        <button 
+          onClick={(e) => { e.stopPropagation(); initCanvas(); }} 
+          className="bg-white/20 hover:bg-white/30 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+            <path d="M21 3v5h-5" />
+          </svg>
         </button>
       </div>
 
       {status === GameStatus.CLEAN && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in duration-500">
-          <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center">
-            <h2 className="text-2xl font-black mb-6 uppercase tracking-tighter">Window Cleaned!</h2>
-            <button onClick={initCanvas} className="bg-black text-white px-8 py-3 rounded-xl font-bold hover:bg-zinc-800 transition-colors">PLAY AGAIN</button>
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/20 animate-in fade-in duration-500">
+          <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full">
+            <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Crystal Clear</h2>
+            <button 
+              onClick={(e) => { e.stopPropagation(); initCanvas(); }} 
+              className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[11px] tracking-widest uppercase"
+            >
+              Next Window
+            </button>
           </div>
         </div>
       )}
 
-      <div className="cursor-brush" style={{ left: mousePos.x, top: mousePos.y, opacity: status === GameStatus.CLEAN ? 0 : 1 }} />
+      {/* Custom Cursor */}
+      <div 
+        className="cursor-brush" 
+        style={{ 
+          left: mousePos.x, 
+          top: mousePos.y, 
+          width: currentBrushSize, 
+          height: currentBrushSize,
+          opacity: (status === GameStatus.CLEAN || isDrawing) ? 0 : 0.4,
+          background: 'radial-gradient(circle, rgba(255,255,255,0.7) 0%, transparent 70%)',
+          border: '1px solid rgba(255,255,255,0.2)'
+        }} 
+      />
     </div>
   );
 };
