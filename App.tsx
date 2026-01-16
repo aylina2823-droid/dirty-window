@@ -225,7 +225,7 @@ const App: React.FC = () => {
             <p className="text-zinc-500 text-[11px] mb-8 leading-relaxed font-medium uppercase tracking-wider">Протри стекло, чтобы увидеть пейзаж</p>
             <button 
               onClick={(e) => { e.stopPropagation(); startGame(); }} 
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[12px] tracking-[0.2em] uppercase shadow-xl"
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-[0.2em] uppercase shadow-xl"
             >
               Начать
             </button>
@@ -245,7 +245,7 @@ const App: React.FC = () => {
             <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Идеально чисто</h2>
             <button 
               onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[11px] tracking-widest uppercase shadow-xl"
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-widest uppercase shadow-xl"
             >
               Следующее окно
             </button>
