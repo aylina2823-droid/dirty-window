@@ -172,8 +172,8 @@ const App: React.FC = () => {
         alt=""
         className={`absolute inset-0 w-full h-full object-cover block pointer-events-none z-0 transition-opacity duration-700 ${isImgLoading ? 'opacity-0' : 'opacity-100'}`}
         style={{ 
-          filter: status === GameStatus.CLEAN ? 'none' : `blur(${Math.max(0, 20 - progress * 0.4)}px)`,
-          transition: 'filter 0.4s ease-out, opacity 0.7s ease-in'
+          filter: status === GameStatus.CLEAN ? 'none' : `blur(${Math.max(0, 25 - progress * 1.5)}px)`,
+          transition: 'filter 0.3s ease-out, opacity 0.7s ease-in'
         }}
         onLoad={() => setIsImgLoading(false)}
         onError={handleImageError}
