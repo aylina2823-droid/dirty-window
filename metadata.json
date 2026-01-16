@@ -1,0 +1,7 @@
+{
+  "name": "Dirty Window - Cleaning Mini-game",
+  "description": "A relaxing, satisfying browser game where you scrub away grime from a window to reveal a beautiful landscape. Features realistic scrubbing audio and progress tracking.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
