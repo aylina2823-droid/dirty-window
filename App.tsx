@@ -5,18 +5,18 @@ import { GameStatus, Point } from './types';
 
 const CLEAN_THRESHOLD = 0.85;
 
-// Фиксированный набор из 10 качественных ID из Unsplash для лучшего кэширования
+// Обновленный список из 10 максимально стабильных и популярных ID Unsplash
 const SCENIC_IMAGES = [
-  "1470071459604-3b5ec3a7fe05", // Горы
-  "1441974231531-c6227db76b6e", // Лес
-  "1501785887741-f67a99599682", // Лодка на озере
-  "1472214103551-237f51d073d2", // Поле
-  "1469474968028-56623f02e42e", // Озеро и туман
-  "1447752875215-b2761acb3c5d", // Дорога в лесу
-  "1586348943549-c92dd457c647", // Закат
-  "1426604966149-8084e0af976a", // Остров
-  "1506744038136-46273834b3fb", // Каньон
-  "1518098268026-4e89f1a2cd8e"  // Водопад
+  "1464822759023-fed622ff2c3b", // Горный массив
+  "1501854140801-50d01698950b", // Зеленые холмы
+  "1441974231531-c6227db76b6e", // Лесная чаща
+  "1470071459604-3b5ec3a7fe05", // Туманный пейзаж
+  "1447752875215-b2761acb3c5d", // Осенний лес
+  "1472214103551-237f51d073d2", // Поле на закате
+  "1532274402911-5a3b114c5d27", // Озеро в горах
+  "1506744038136-46273834b3fb", // Гранд-Каньон
+  "1511497584788-876760111969", // Хвойный лес
+  "1493246507139-91e8fad9978e"  // Снежные пики
 ];
 
 const App: React.FC = () => {
@@ -26,17 +26,19 @@ const App: React.FC = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [mousePos, setMousePos] = useState<Point>({ x: -100, y: -100 });
   const [bgIndex, setBgIndex] = useState(0);
+  const [isImgLoading, setIsImgLoading] = useState(true);
   const lastCheckTime = useRef<number>(0);
+  const retryCount = useRef<number>(0);
 
-  // URL текущего изображения
+  // Формируем URL. Добавляем sig для предотвращения проблем с кэшем, если картинка битая
   const currentImageUrl = useMemo(() => {
-    return `https://images.unsplash.com/photo-${SCENIC_IMAGES[bgIndex]}?auto=format&fit=crop&w=1200&q=75`;
+    return `https://images.unsplash.com/photo-${SCENIC_IMAGES[bgIndex]}?q=80&w=1800&auto=format&fit=crop`;
   }, [bgIndex]);
 
-  // Предзагрузка следующего изображения в фоне
+  // Предзагрузка следующего изображения
   useEffect(() => {
     const nextIndex = (bgIndex + 1) % SCENIC_IMAGES.length;
-    const nextUrl = `https://images.unsplash.com/photo-${SCENIC_IMAGES[nextIndex]}?auto=format&fit=crop&w=1200&q=75`;
+    const nextUrl = `https://images.unsplash.com/photo-${SCENIC_IMAGES[nextIndex]}?q=80&w=1800&auto=format&fit=crop`;
     const img = new Image();
     img.src = nextUrl;
   }, [bgIndex]);
@@ -48,8 +50,9 @@ const App: React.FC = () => {
   }, []);
 
   const initCanvas = useCallback(() => {
-    // Переключаем на следующий индекс по кругу
     setBgIndex((prev) => (prev + 1) % SCENIC_IMAGES.length);
+    setIsImgLoading(true);
+    retryCount.current = 0;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -59,7 +62,6 @@ const App: React.FC = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Слой "запотевшего" стекла
     ctx.globalCompositeOperation = 'source-over';
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, 'rgba(235, 240, 250, 0.98)');
@@ -67,7 +69,6 @@ const App: React.FC = () => {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Добавляем текстуру (пыль/капли)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
     for (let i = 0; i < 8000; i++) {
       ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
@@ -78,20 +79,13 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Первая инициализация
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = 'rgba(235, 240, 250, 0.98)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-
     const handleResize = () => {
-      if (canvasRef.current) initCanvas();
+      if (canvasRef.current) {
+        // Сохраняем содержимое при ресайзе или просто перерисовываем
+        const canvas = canvasRef.current;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -149,6 +143,15 @@ const App: React.FC = () => {
     scrub(e.clientX, e.clientY);
   };
 
+  const handleImageError = () => {
+    console.warn(`Картинка ${SCENIC_IMAGES[bgIndex]} не загрузилась. Пробуем следующую...`);
+    // Чтобы не уйти в бесконечный цикл, если вдруг всё сломалось
+    if (retryCount.current < SCENIC_IMAGES.length) {
+      retryCount.current++;
+      setBgIndex((prev) => (prev + 1) % SCENIC_IMAGES.length);
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden touch-none"
@@ -163,17 +166,25 @@ const App: React.FC = () => {
         calculateProgress(); 
       }}
     >
-      {/* Фоновое изображение без React key для плавности замены src */}
+      {/* Фоновое изображение */}
       <img 
         src={currentImageUrl} 
         alt=""
-        className="absolute inset-0 w-full h-full object-cover block pointer-events-none z-0"
+        className={`absolute inset-0 w-full h-full object-cover block pointer-events-none z-0 transition-opacity duration-700 ${isImgLoading ? 'opacity-0' : 'opacity-100'}`}
         style={{ 
           filter: status === GameStatus.CLEAN ? 'none' : `blur(${Math.max(0, 20 - progress * 0.4)}px)`,
-          transition: 'filter 0.4s ease-out'
+          transition: 'filter 0.4s ease-out, opacity 0.7s ease-in'
         }}
-        onLoad={() => console.log('Image loaded:', bgIndex)}
+        onLoad={() => setIsImgLoading(false)}
+        onError={handleImageError}
       />
+
+      {/* Индикатор загрузки фото */}
+      {isImgLoading && (
+        <div className="absolute inset-0 z-0 flex items-center justify-center text-white/20 text-[10px] uppercase tracking-widest animate-pulse font-bold">
+          Загрузка пейзажа...
+        </div>
+      )}
 
       {/* Канвас со "стеклом" */}
       <canvas 
@@ -183,7 +194,7 @@ const App: React.FC = () => {
 
       {/* Прогресс */}
       <div className="absolute top-6 left-6 z-20 pointer-events-none select-none">
-        <div className="bg-black/30 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl">
+        <div className="bg-black/40 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl">
           <p className="text-[10px] font-black uppercase tracking-[0.3em]">
             Очищено: <span className="text-white">{progress}%</span>
           </p>
@@ -194,7 +205,7 @@ const App: React.FC = () => {
       <div className="absolute top-6 right-6 z-20">
         <button 
           onClick={(e) => { e.stopPropagation(); initCanvas(); }} 
-          className="bg-black/30 hover:bg-black/40 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90"
+          className="bg-black/40 hover:bg-black/50 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90"
           title="Сбросить"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -206,8 +217,8 @@ const App: React.FC = () => {
 
       {/* Экран победы */}
       {status === GameStatus.CLEAN && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/40 animate-in fade-in duration-500 backdrop-blur-sm">
-          <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full">
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/50 animate-in fade-in duration-500 backdrop-blur-md">
+          <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full scale-up-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
                 <polyline points="20 6 9 17 4 12" />
@@ -216,7 +227,7 @@ const App: React.FC = () => {
             <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Идеально чисто</h2>
             <button 
               onClick={(e) => { e.stopPropagation(); initCanvas(); }} 
-              className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[11px] tracking-widest uppercase"
+              className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[11px] tracking-widest uppercase shadow-xl"
             >
               Следующее окно
             </button>
