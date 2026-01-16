@@ -5,7 +5,6 @@ import { GameStatus, Point } from './types';
 
 const CLEAN_THRESHOLD = 0.85;
 
-// Verified Unsplash IDs that are colorful and high-quality
 const SCENIC_IMAGES = [
   "1470071459604-3b5ec3a7fe05",
   "1441974231531-c6227db76b6e",
@@ -26,7 +25,6 @@ const App: React.FC = () => {
   const [bgId, setBgId] = useState(SCENIC_IMAGES[0]);
   const lastCheckTime = useRef<number>(0);
 
-  // Use a stable width for loading
   const currentImageUrl = useMemo(() => {
     return `https://images.unsplash.com/photo-${bgId}?auto=format&fit=crop&w=1200&q=70`;
   }, [bgId]);
@@ -38,7 +36,6 @@ const App: React.FC = () => {
   }, []);
 
   const initCanvas = useCallback(() => {
-    // Pick next image
     const others = SCENIC_IMAGES.filter(id => id !== bgId);
     setBgId(others[Math.floor(Math.random() * others.length)]);
 
@@ -50,7 +47,6 @@ const App: React.FC = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // FOG LAYER
     ctx.globalCompositeOperation = 'source-over';
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, 'rgba(240, 245, 255, 0.97)');
@@ -58,7 +54,6 @@ const App: React.FC = () => {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Texture
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     for (let i = 0; i < 10000; i++) {
       ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
@@ -71,11 +66,7 @@ const App: React.FC = () => {
   useEffect(() => {
     initCanvas();
     const handleResize = () => {
-      if (canvasRef.current) {
-        // Warning: Resize clears canvas content normally, 
-        // but for a mini-game it's usually acceptable to just reset.
-        initCanvas();
-      }
+      if (canvasRef.current) initCanvas();
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -126,7 +117,7 @@ const App: React.FC = () => {
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    audioService.startScrubbing();
+    audioService.startScrubbing(); // Это также активирует AudioContext на мобильных
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setIsDrawing(true);
     setMousePos({ x: e.clientX, y: e.clientY });
@@ -141,9 +132,12 @@ const App: React.FC = () => {
         setMousePos({ x: e.clientX, y: e.clientY });
         if (isDrawing) scrub(e.clientX, e.clientY);
       }}
-      onPointerUp={() => { setIsDrawing(false); audioService.stopScrubbing(); calculateProgress(); }}
+      onPointerUp={() => { 
+        setIsDrawing(false); 
+        audioService.stopScrubbing(); 
+        calculateProgress(); 
+      }}
     >
-      {/* Background Image - Z-INDEX 0 */}
       <img 
         src={currentImageUrl} 
         alt=""
@@ -154,17 +148,15 @@ const App: React.FC = () => {
         }}
       />
 
-      {/* Steam Canvas - Z-INDEX 10 */}
       <canvas 
         ref={canvasRef} 
         className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
       />
 
-      {/* UI - Z-INDEX 20 */}
       <div className="absolute top-6 left-6 z-20 pointer-events-none select-none">
         <div className="bg-white/20 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl">
           <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-            Cleaned: <span className="text-white">{progress}%</span>
+            Очищено: <span className="text-white">{progress}%</span>
           </p>
         </div>
       </div>
@@ -173,6 +165,7 @@ const App: React.FC = () => {
         <button 
           onClick={(e) => { e.stopPropagation(); initCanvas(); }} 
           className="bg-white/20 hover:bg-white/30 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90"
+          title="Сбросить"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
             <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
@@ -184,18 +177,17 @@ const App: React.FC = () => {
       {status === GameStatus.CLEAN && (
         <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/20 animate-in fade-in duration-500">
           <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full">
-            <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Crystal Clear</h2>
+            <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Идеально чисто</h2>
             <button 
               onClick={(e) => { e.stopPropagation(); initCanvas(); }} 
               className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[11px] tracking-widest uppercase"
             >
-              Next Window
+              Следующее окно
             </button>
           </div>
         </div>
       )}
 
-      {/* Custom Cursor */}
       <div 
         className="cursor-brush" 
         style={{ 
