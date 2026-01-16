@@ -5,6 +5,7 @@ export interface Point {
 }
 
 export enum GameStatus {
+  START = 'START',
   PLAYING = 'PLAYING',
   CLEAN = 'CLEAN'
 }
