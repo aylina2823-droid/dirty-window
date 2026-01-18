@@ -5,17 +5,17 @@ import { GameStatus, Point } from './types';
 
 const CLEAN_THRESHOLD = 0.85;
 
-const SCENIC_IMAGES = [
-  "1464822759023-fed622ff2c3b", // Горный массив
-  "1501854140801-50d01698950b", // Зеленые холмы
-  "1441974231531-c6227db76b6e", // Лесная чаща
-  "1470071459604-3b5ec3a7fe05", // Туманный пейзаж
-  "1447752875215-b2761acb3c5d", // Осенний лес
-  "1472214103551-237f51d073d2", // Поле на закате
-  "1532274402911-5a3b114c5d27", // Озеро в горах
-  "1506744038136-46273834b3fb", // Гранд-Каньон
-  "1511497584788-876760111969", // Хвойный лес
-  "1493246507139-91e8fad9978e"  // Снежные пики
+const backgroundImages = [
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/1.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/2.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/3.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/4.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/5.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/6.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/7.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/8.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/9.jpg',
+  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/10.jpg'
 ];
 
 const App: React.FC = () => {
@@ -30,12 +30,13 @@ const App: React.FC = () => {
   const retryCount = useRef<number>(0);
 
   const currentImageUrl = useMemo(() => {
-    return `https://images.unsplash.com/photo-${SCENIC_IMAGES[bgIndex]}?q=80&w=1800&auto=format&fit=crop`;
+    return backgroundImages[bgIndex];
   }, [bgIndex]);
 
+  // Preload next image
   useEffect(() => {
-    const nextIndex = (bgIndex + 1) % SCENIC_IMAGES.length;
-    const nextUrl = `https://images.unsplash.com/photo-${SCENIC_IMAGES[nextIndex]}?q=80&w=1800&auto=format&fit=crop`;
+    const nextIndex = (bgIndex + 1) % backgroundImages.length;
+    const nextUrl = backgroundImages[nextIndex];
     const img = new Image();
     img.src = nextUrl;
   }, [bgIndex]);
@@ -76,7 +77,7 @@ const App: React.FC = () => {
   };
 
   const nextWindow = () => {
-    setBgIndex((prev) => (prev + 1) % SCENIC_IMAGES.length);
+    setBgIndex((prev) => (prev + 1) % backgroundImages.length);
     setIsImgLoading(true);
     retryCount.current = 0;
     setupCanvasLayer();
@@ -144,9 +145,9 @@ const App: React.FC = () => {
   };
 
   const handleImageError = () => {
-    if (retryCount.current < SCENIC_IMAGES.length) {
+    if (retryCount.current < backgroundImages.length) {
       retryCount.current++;
-      setBgIndex((prev) => (prev + 1) % SCENIC_IMAGES.length);
+      setBgIndex((prev) => (prev + 1) % backgroundImages.length);
     }
   };
 
@@ -188,10 +189,13 @@ const App: React.FC = () => {
       />
 
       {status === GameStatus.PLAYING && (
-        <div className="absolute top-6 left-6 z-20 pointer-events-none select-none">
-          <div className="bg-black/40 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-              Очищено: <span className="text-white">{progress}%</span>
+        <div className="absolute top-6 left-6 z-20 pointer-events-none select-none flex flex-col gap-2">
+          <div className="bg-black/40 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl flex items-center gap-3">
+             <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-sky-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+             </div>
+             <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+              {progress}%
             </p>
           </div>
         </div>
@@ -202,6 +206,7 @@ const App: React.FC = () => {
           <button 
             onClick={(e) => { e.stopPropagation(); setupCanvasLayer(); }} 
             className="bg-black/40 hover:bg-black/50 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90"
+            title="Запотеть заново"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
@@ -222,7 +227,7 @@ const App: React.FC = () => {
               </svg>
             </div>
             <h2 className="text-xl font-black mb-2 text-zinc-900 tracking-tight uppercase">Окно запотело</h2>
-            <p className="text-zinc-500 text-[11px] mb-8 leading-relaxed font-medium uppercase tracking-wider">Протри стекло, чтобы увидеть пейзаж</p>
+            <p className="text-zinc-500 text-[11px] mb-8 leading-relaxed font-medium uppercase tracking-wider">Протри стекло, чтобы увидеть вид за окном</p>
             <button 
               onClick={(e) => { e.stopPropagation(); startGame(); }} 
               className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-[0.2em] uppercase shadow-xl"
@@ -242,7 +247,7 @@ const App: React.FC = () => {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Идеально чисто</h2>
+            <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Чисто</h2>
             <button 
               onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
               className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-widest uppercase shadow-xl"
