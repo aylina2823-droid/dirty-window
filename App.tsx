@@ -3,20 +3,13 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
 
-const CLEAN_THRESHOLD = 0.85;
+// Снижаем порог очистки до 0.75 согласно запросу
+const CLEAN_THRESHOLD = 0.75;
 
-const backgroundImages = [
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/1.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/2.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/3.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/4.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/5.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/6.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/7.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/8.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/9.jpg',
-  'https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/10.jpg'
-];
+// Сгенерируем массив ссылок от 1.jpg до 70.jpg
+const backgroundImages = Array.from({ length: 70 }, (_, i) => 
+  `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${i + 1}.jpg`
+);
 
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,11 +22,51 @@ const App: React.FC = () => {
   const lastCheckTime = useRef<number>(0);
   const retryCount = useRef<number>(0);
 
+  // Определение текстов этапов (7 серий по 10 картинок)
+  const stageInfo = useMemo(() => {
+    if (bgIndex < 10) {
+      return {
+        title: "Тихое пробуждение",
+        subtitle: "Мир всё еще размыт после сна. Протри, чтобы сфокусироваться."
+      };
+    } else if (bgIndex < 20) {
+      return {
+        title: "Дыхание природы",
+        subtitle: "Пейзаж скрыт за густой пеленой. Разгони её рукой."
+      };
+    } else if (bgIndex < 30) {
+      return {
+        title: "Игра линий",
+        subtitle: "Хаос скрывает порядок. Очисти фон, чтобы найти ритм."
+      };
+    } else if (bgIndex < 40) {
+      return {
+        title: "На пороге ночи",
+        subtitle: "Город смеркается. Поймай уходящий свет."
+      };
+    } else if (bgIndex < 50) {
+      return {
+        title: "Вкус жизни",
+        subtitle: "Ароматы витают в воздухе. Очисти стекло, чтобы увидеть блюдо."
+      };
+    } else if (bgIndex < 60) {
+      return {
+        title: "Новые горизонты",
+        subtitle: "Мир огромен. Сотри границы, чтобы увидеть чудо."
+      };
+    } else {
+      return {
+        title: "Ледяная сказка",
+        subtitle: "Мир сковал мороз. Растопи лед своим теплом."
+      };
+    }
+  }, [bgIndex]);
+
   const currentImageUrl = useMemo(() => {
     return backgroundImages[bgIndex];
   }, [bgIndex]);
 
-  // Preload next image
+  // Предзагрузка следующего изображения
   useEffect(() => {
     const nextIndex = (bgIndex + 1) % backgroundImages.length;
     const nextUrl = backgroundImages[nextIndex];
@@ -41,10 +74,12 @@ const App: React.FC = () => {
     img.src = nextUrl;
   }, [bgIndex]);
 
+  // Уменьшаем размер кисти на 30% согласно запросу
+  // Было: 0.16 (80-180). Стало: ~0.11 (56-126)
   const currentBrushSize = useMemo(() => {
     const minSide = Math.min(window.innerWidth, window.innerHeight);
-    let size = Math.floor(minSide * 0.16);
-    return Math.max(80, Math.min(size, 180));
+    let size = Math.floor(minSide * 0.11);
+    return Math.max(55, Math.min(size, 125));
   }, []);
 
   const setupCanvasLayer = useCallback(() => {
@@ -77,11 +112,18 @@ const App: React.FC = () => {
   };
 
   const nextWindow = () => {
-    setBgIndex((prev) => (prev + 1) % backgroundImages.length);
+    const nextIdx = (bgIndex + 1) % backgroundImages.length;
+    setBgIndex(nextIdx);
     setIsImgLoading(true);
     retryCount.current = 0;
     setupCanvasLayer();
-    setStatus(GameStatus.PLAYING);
+    
+    // Экран "Начать" появляется только в начале каждой серии (каждые 10 картинок)
+    if (nextIdx % 10 === 0) {
+      setStatus(GameStatus.START);
+    } else {
+      setStatus(GameStatus.PLAYING);
+    }
   };
 
   useEffect(() => {
@@ -219,15 +261,19 @@ const App: React.FC = () => {
       {/* Начальный экран */}
       {status === GameStatus.START && (
         <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/20 backdrop-blur-[2px]">
-          <div className="bg-white/90 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-white/90 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
             <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                 <circle cx="12" cy="12" r="3" />
               </svg>
             </div>
-            <h2 className="text-xl font-black mb-2 text-zinc-900 tracking-tight uppercase">Окно запотело</h2>
-            <p className="text-zinc-500 text-[11px] mb-8 leading-relaxed font-medium uppercase tracking-wider">Протри стекло, чтобы увидеть вид за окном</p>
+            <h2 className="text-2xl font-black mb-2 text-zinc-900 tracking-tight uppercase leading-tight">
+              {stageInfo.title}
+            </h2>
+            <p className="text-zinc-500 text-[13px] mb-8 leading-relaxed font-medium uppercase tracking-wider">
+              {stageInfo.subtitle}
+            </p>
             <button 
               onClick={(e) => { e.stopPropagation(); startGame(); }} 
               className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-[0.2em] uppercase shadow-xl"
