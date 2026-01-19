@@ -3,8 +3,8 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
 
-// Порог очистки 0.75
-const CLEAN_THRESHOLD = 0.75;
+// Порог очистки 0.85
+const CLEAN_THRESHOLD = 0.85;
 
 // Массив ссылок от 1.jpg до 70.jpg
 const backgroundImages = Array.from({ length: 70 }, (_, i) => 
