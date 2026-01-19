@@ -3,10 +3,10 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
 
-// Снижаем порог очистки до 0.75 согласно запросу
+// Порог очистки 0.75
 const CLEAN_THRESHOLD = 0.75;
 
-// Сгенерируем массив ссылок от 1.jpg до 70.jpg
+// Массив ссылок от 1.jpg до 70.jpg
 const backgroundImages = Array.from({ length: 70 }, (_, i) => 
   `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${i + 1}.jpg`
 );
@@ -19,6 +19,8 @@ const App: React.FC = () => {
   const [mousePos, setMousePos] = useState<Point>({ x: -100, y: -100 });
   const [bgIndex, setBgIndex] = useState(0);
   const [isImgLoading, setIsImgLoading] = useState(true);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  
   const lastCheckTime = useRef<number>(0);
   const retryCount = useRef<number>(0);
 
@@ -74,13 +76,13 @@ const App: React.FC = () => {
     img.src = nextUrl;
   }, [bgIndex]);
 
-  // Уменьшаем размер кисти на 30% согласно запросу
-  // Было: 0.16 (80-180). Стало: ~0.11 (56-126)
-  const currentBrushSize = useMemo(() => {
-    const minSide = Math.min(window.innerWidth, window.innerHeight);
-    let size = Math.floor(minSide * 0.11);
-    return Math.max(55, Math.min(size, 125));
-  }, []);
+  // Динамический размер кисти (радиус)
+  // Обновленные значения для более комфортной игры
+  // Мобильные (< 768px): 40px
+  // Десктоп (>= 768px): 80px
+  const currentBrushRadius = useMemo(() => {
+    return windowWidth < 768 ? 40 : 80;
+  }, [windowWidth]);
 
   const setupCanvasLayer = useCallback(() => {
     const canvas = canvasRef.current;
@@ -105,6 +107,16 @@ const App: React.FC = () => {
     setProgress(0);
   }, []);
 
+  useEffect(() => {
+    setupCanvasLayer();
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+      setupCanvasLayer();
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [setupCanvasLayer]);
+
   const startGame = () => {
     audioService.startScrubbing();
     audioService.stopScrubbing();
@@ -118,20 +130,12 @@ const App: React.FC = () => {
     retryCount.current = 0;
     setupCanvasLayer();
     
-    // Экран "Начать" появляется только в начале каждой серии (каждые 10 картинок)
     if (nextIdx % 10 === 0) {
       setStatus(GameStatus.START);
     } else {
       setStatus(GameStatus.PLAYING);
     }
   };
-
-  useEffect(() => {
-    setupCanvasLayer();
-    const handleResize = () => setupCanvasLayer();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [setupCanvasLayer]);
 
   const calculateProgress = useCallback(() => {
     const canvas = canvasRef.current;
@@ -161,14 +165,14 @@ const App: React.FC = () => {
     if (!ctx) return;
 
     ctx.globalCompositeOperation = 'destination-out';
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, currentBrushSize);
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, currentBrushRadius);
     grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
     grad.addColorStop(0.6, 'rgba(255, 255, 255, 0.7)');
     grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
     
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(x, y, currentBrushSize, 0, Math.PI * 2);
+    ctx.arc(x, y, currentBrushRadius, 0, Math.PI * 2);
     ctx.fill();
 
     if (Date.now() - lastCheckTime.current > 120) {
@@ -309,8 +313,8 @@ const App: React.FC = () => {
         style={{ 
           left: mousePos.x, 
           top: mousePos.y, 
-          width: currentBrushSize, 
-          height: currentBrushSize,
+          width: currentBrushRadius * 2, 
+          height: currentBrushRadius * 2,
           opacity: (status !== GameStatus.PLAYING || isDrawing) ? 0 : 0.4,
           background: 'radial-gradient(circle, rgba(255,255,255,0.7) 0%, transparent 70%)',
           border: '1px solid rgba(255,255,255,0.2)'
