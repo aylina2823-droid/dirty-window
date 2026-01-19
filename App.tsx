@@ -78,8 +78,10 @@ const App: React.FC = () => {
   }, [bgIndex]);
 
   // Динамический размер кисти (радиус)
+  // Мобильные (< 768px): 50px
+  // Десктоп (>= 768px): 80px
   const currentBrushRadius = useMemo(() => {
-    return windowWidth < 768 ? 40 : 80;
+    return windowWidth < 768 ? 50 : 80;
   }, [windowWidth]);
 
   const setupCanvasLayer = useCallback(() => {
