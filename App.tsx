@@ -12,6 +12,7 @@ const backgroundImages = Array.from({ length: 70 }, (_, i) =>
 );
 
 const App: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
@@ -25,7 +26,7 @@ const App: React.FC = () => {
   const lastCheckTime = useRef<number>(0);
   const retryCount = useRef<number>(0);
 
-  // Определение текстов этапов (7 серий по 10 картинок)
+  // Определение текстов этапов
   const stageInfo = useMemo(() => {
     if (bgIndex < 10) {
       return {
@@ -77,9 +78,7 @@ const App: React.FC = () => {
     img.src = nextUrl;
   }, [bgIndex]);
 
-  // Динамический размер кисти (радиус)
-  // Мобильные (< 768px): 50px
-  // Десктоп (>= 768px): 80px
+  // Динамический размер кисти
   const currentBrushRadius = useMemo(() => {
     return windowWidth < 768 ? 50 : 80;
   }, [windowWidth]);
@@ -117,13 +116,35 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [setupCanvasLayer]);
 
+  // Блокировка нативных жестов скролла и закрытия
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const preventDefault = (e: TouchEvent) => {
+      // Блокируем всё, кроме кликов по кнопкам внутри UI, если это необходимо.
+      // Но в нашем случае игра покрывает весь экран, так что блокируем глобально на контейнере.
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    container.addEventListener('touchstart', preventDefault, { passive: false });
+    container.addEventListener('touchmove', preventDefault, { passive: false });
+    
+    return () => {
+      container.removeEventListener('touchstart', preventDefault);
+      container.removeEventListener('touchmove', preventDefault);
+    };
+  }, []);
+
   // Эффект для задержки появления кнопки "Следующее окно"
   useEffect(() => {
     let timer: number;
     if (status === GameStatus.CLEAN) {
       timer = window.setTimeout(() => {
         setShowVictoryUI(true);
-      }, 2500); // Задержка 2.5 секунды
+      }, 2500);
     }
     return () => clearTimeout(timer);
   }, [status]);
@@ -211,7 +232,8 @@ const App: React.FC = () => {
 
   return (
     <div 
-      className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden touch-none"
+      ref={containerRef}
+      className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden touch-none overscroll-none"
       onPointerDown={handlePointerDown}
       onPointerMove={(e) => {
         setMousePos({ x: e.clientX, y: e.clientY });
@@ -243,7 +265,7 @@ const App: React.FC = () => {
 
       <canvas 
         ref={canvasRef} 
-        className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
+        className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 touch-none overscroll-none ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
       />
 
       {status === GameStatus.PLAYING && (
@@ -263,7 +285,7 @@ const App: React.FC = () => {
         <div className="absolute top-6 right-6 z-20">
           <button 
             onClick={(e) => { e.stopPropagation(); setupCanvasLayer(); }} 
-            className="bg-black/40 hover:bg-black/50 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90"
+            className="bg-black/40 hover:bg-black/50 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90 touch-auto"
             title="Запотеть заново"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -292,7 +314,7 @@ const App: React.FC = () => {
             </p>
             <button 
               onClick={(e) => { e.stopPropagation(); startGame(); }} 
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-[0.2em] uppercase shadow-xl"
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-[0.2em] uppercase shadow-xl touch-auto"
             >
               Начать
             </button>
@@ -300,7 +322,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Экран победы (кнопка "Дальше") - появляется с задержкой */}
+      {/* Экран победы (кнопка "Дальше") */}
       {showVictoryUI && (
         <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/50 animate-in fade-in duration-700 backdrop-blur-md">
           <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
@@ -312,7 +334,7 @@ const App: React.FC = () => {
             <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Чисто</h2>
             <button 
               onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-widest uppercase shadow-xl"
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-widest uppercase shadow-xl touch-auto"
             >
               Следующее окно
             </button>
