@@ -122,8 +122,13 @@ const App: React.FC = () => {
     if (!container) return;
 
     const preventDefault = (e: TouchEvent) => {
-      // Блокируем всё, кроме кликов по кнопкам внутри UI, если это необходимо.
-      // Но в нашем случае игра покрывает весь экран, так что блокируем глобально на контейнере.
+      // Если клик по кнопке или интерактивному элементу - пропускаем, чтобы события click работали
+      const target = e.target as HTMLElement;
+      if (target.closest('button')) {
+        return;
+      }
+
+      // Блокируем всё остальное (для канваса и фона), чтобы предотвратить скролл и pull-to-close
       if (e.cancelable) {
         e.preventDefault();
       }
