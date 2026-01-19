@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
+  const [showVictoryUI, setShowVictoryUI] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [mousePos, setMousePos] = useState<Point>({ x: -100, y: -100 });
   const [bgIndex, setBgIndex] = useState(0);
@@ -77,9 +78,6 @@ const App: React.FC = () => {
   }, [bgIndex]);
 
   // Динамический размер кисти (радиус)
-  // Обновленные значения для более комфортной игры
-  // Мобильные (< 768px): 40px
-  // Десктоп (>= 768px): 80px
   const currentBrushRadius = useMemo(() => {
     return windowWidth < 768 ? 40 : 80;
   }, [windowWidth]);
@@ -117,6 +115,17 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [setupCanvasLayer]);
 
+  // Эффект для задержки появления кнопки "Следующее окно"
+  useEffect(() => {
+    let timer: number;
+    if (status === GameStatus.CLEAN) {
+      timer = window.setTimeout(() => {
+        setShowVictoryUI(true);
+      }, 2500); // Задержка 2.5 секунды
+    }
+    return () => clearTimeout(timer);
+  }, [status]);
+
   const startGame = () => {
     audioService.startScrubbing();
     audioService.stopScrubbing();
@@ -127,6 +136,7 @@ const App: React.FC = () => {
     const nextIdx = (bgIndex + 1) % backgroundImages.length;
     setBgIndex(nextIdx);
     setIsImgLoading(true);
+    setShowVictoryUI(false);
     retryCount.current = 0;
     setupCanvasLayer();
     
@@ -288,10 +298,10 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Экран победы */}
-      {status === GameStatus.CLEAN && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/50 animate-in fade-in duration-500 backdrop-blur-md">
-          <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full scale-up-center">
+      {/* Экран победы (кнопка "Дальше") - появляется с задержкой */}
+      {showVictoryUI && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/50 animate-in fade-in duration-700 backdrop-blur-md">
+          <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
                 <polyline points="20 6 9 17 4 12" />
