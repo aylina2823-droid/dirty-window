@@ -6,14 +6,14 @@ import { GameStatus, Point } from './types';
 // Порог очистки 0.85
 const CLEAN_THRESHOLD = 0.85;
 
-// Пересобранный массив backgroundImages в новом порядке:
-// 1-я десятка: 1–10
-// 2-я десятка: 41–50
-// 3-я десятка: 21–30
-// 4-я десятка: 31–40
-// 5-я десятка: 11–20
-// 6-я десятка: 51–60
-// 7-я десятка: 61–70
+// Финальная структура уровней (70 изображений) с кэш-бастером ?v=2:
+// 1-я десятка: файлы 1–10
+// 2-я десятка: файлы 41–50
+// 3-я десятка: файлы 21–30
+// 4-я десятка: файлы 31–40
+// 5-я десятка: файлы 11–20
+// 6-я десятка: файлы 51–60
+// 7-я десятка: файлы 61–70
 const backgroundImages = [
   ...Array.from({ length: 10 }, (_, i) => i + 1),   // 1-10
   ...Array.from({ length: 10 }, (_, i) => i + 41),  // 41-50
@@ -22,7 +22,7 @@ const backgroundImages = [
   ...Array.from({ length: 10 }, (_, i) => i + 11),  // 11-20
   ...Array.from({ length: 10 }, (_, i) => i + 51),  // 51-60
   ...Array.from({ length: 10 }, (_, i) => i + 61),  // 61-70
-].map(num => `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${num}.jpg`);
+].map(num => `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${num}.jpg?v=2`);
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,7 +39,7 @@ const App: React.FC = () => {
   const lastCheckTime = useRef<number>(0);
   const retryCount = useRef<number>(0);
 
-  // Определение текстов этапов по новому порядку
+  // Определение текстов этапов по утвержденным диапазонам (каждые 10 уровней)
   const stageInfo = useMemo(() => {
     if (bgIndex < 10) {
       return {
@@ -53,28 +53,28 @@ const App: React.FC = () => {
       };
     } else if (bgIndex < 30) {
       return {
-        title: "Игра линий",
-        subtitle: "Хаос скрывает порядок. Очисти фон, чтобы найти ритм."
+        title: "Дыхание моря",
+        subtitle: "Соленый ветер и волны. Сотри брызги, чтобы увидеть горизонт."
       };
     } else if (bgIndex < 40) {
       return {
-        title: "На пороге ночи",
-        subtitle: "Город смеркается. Поймай уходящий свет."
+        title: "Игра цвета",
+        subtitle: "Палитра эмоций скрыта. Очисти фон, чтобы вернуть яркость."
       };
     } else if (bgIndex < 50) {
       return {
-        title: "Дыхание природы",
-        subtitle: "Пейзаж скрыт за густой пеленой. Разгони её рукой."
+        title: "Величие вершин",
+        subtitle: "Свежий воздух и свобода. Сотри туман, чтобы увидеть простор."
       };
     } else if (bgIndex < 60) {
       return {
-        title: "Новые горизонты",
-        subtitle: "Мир огромен. Сотри границы, чтобы увидеть чудо."
+        title: "Огни мегаполиса",
+        subtitle: "Город не спит. Сотри темноту, чтобы найти свет."
       };
     } else {
       return {
-        title: "Ледяная сказка",
-        subtitle: "Мир сковал мороз. Растопи лед своим теплом."
+        title: "Небесная высь",
+        subtitle: "Ты на вершине мира. Коснись облаков своей рукой."
       };
     }
   }, [bgIndex]);
@@ -129,7 +129,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [setupCanvasLayer]);
 
-  // Блокировка нативных жестов скролла и закрытия
+  // Блокировка нативных жестов скролла и закрытия (разрешаем клики по кнопкам)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
