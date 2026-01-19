@@ -6,10 +6,23 @@ import { GameStatus, Point } from './types';
 // Порог очистки 0.85
 const CLEAN_THRESHOLD = 0.85;
 
-// Массив ссылок от 1.jpg до 70.jpg
-const backgroundImages = Array.from({ length: 70 }, (_, i) => 
-  `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${i + 1}.jpg`
-);
+// Пересобранный массив backgroundImages в новом порядке:
+// 1-я десятка: 1–10
+// 2-я десятка: 41–50
+// 3-я десятка: 21–30
+// 4-я десятка: 31–40
+// 5-я десятка: 11–20
+// 6-я десятка: 51–60
+// 7-я десятка: 61–70
+const backgroundImages = [
+  ...Array.from({ length: 10 }, (_, i) => i + 1),   // 1-10
+  ...Array.from({ length: 10 }, (_, i) => i + 41),  // 41-50
+  ...Array.from({ length: 10 }, (_, i) => i + 21),  // 21-30
+  ...Array.from({ length: 10 }, (_, i) => i + 31),  // 31-40
+  ...Array.from({ length: 10 }, (_, i) => i + 11),  // 11-20
+  ...Array.from({ length: 10 }, (_, i) => i + 51),  // 51-60
+  ...Array.from({ length: 10 }, (_, i) => i + 61),  // 61-70
+].map(num => `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${num}.jpg`);
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,7 +39,7 @@ const App: React.FC = () => {
   const lastCheckTime = useRef<number>(0);
   const retryCount = useRef<number>(0);
 
-  // Определение текстов этапов
+  // Определение текстов этапов по новому порядку
   const stageInfo = useMemo(() => {
     if (bgIndex < 10) {
       return {
@@ -35,8 +48,8 @@ const App: React.FC = () => {
       };
     } else if (bgIndex < 20) {
       return {
-        title: "Дыхание природы",
-        subtitle: "Пейзаж скрыт за густой пеленой. Разгони её рукой."
+        title: "Вкус жизни",
+        subtitle: "Ароматы витают в воздухе. Очисти стекло, чтобы увидеть блюдо."
       };
     } else if (bgIndex < 30) {
       return {
@@ -50,8 +63,8 @@ const App: React.FC = () => {
       };
     } else if (bgIndex < 50) {
       return {
-        title: "Вкус жизни",
-        subtitle: "Ароматы витают в воздухе. Очисти стекло, чтобы увидеть блюдо."
+        title: "Дыхание природы",
+        subtitle: "Пейзаж скрыт за густой пеленой. Разгони её рукой."
       };
     } else if (bgIndex < 60) {
       return {
@@ -122,13 +135,10 @@ const App: React.FC = () => {
     if (!container) return;
 
     const preventDefault = (e: TouchEvent) => {
-      // Если клик по кнопке или интерактивному элементу - пропускаем, чтобы события click работали
       const target = e.target as HTMLElement;
       if (target.closest('button')) {
         return;
       }
-
-      // Блокируем всё остальное (для канваса и фона), чтобы предотвратить скролл и pull-to-close
       if (e.cancelable) {
         e.preventDefault();
       }
@@ -168,6 +178,7 @@ const App: React.FC = () => {
     retryCount.current = 0;
     setupCanvasLayer();
     
+    // Срабатывает каждые 10 уровней (0, 10, 20...)
     if (nextIdx % 10 === 0) {
       setStatus(GameStatus.START);
     } else {
