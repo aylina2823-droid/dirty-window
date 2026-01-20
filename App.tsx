@@ -47,46 +47,59 @@ const App: React.FC = () => {
     if (window.Telegram?.WebApp) {
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
-      // Optional: Prevent swipe to close in TG
       if (window.Telegram.WebApp.disableVerticalSwipes) {
         window.Telegram.WebApp.disableVerticalSwipes();
       }
     }
   }, []);
 
-  const stageInfo = useMemo(() => {
+  const seriesConfig = useMemo(() => {
     if (bgIndex < 10) {
       return {
+        emoji: "🌅",
+        color: "#ff9a00", // Сочный оранжевый
         title: "Тихое пробуждение",
         subtitle: "Мир всё еще размыт после сна. Протри, чтобы сфокусироваться."
       };
     } else if (bgIndex < 20) {
       return {
+        emoji: "🥐",
+        color: "#cc6e1d",
         title: "Вкус жизни",
         subtitle: "Ароматы витают в воздухе. Очисти стекло, чтобы увидеть блюдо."
       };
     } else if (bgIndex < 30) {
       return {
+        emoji: "🌊",
+        color: "#65dbcc",
         title: "Дыхание моря",
         subtitle: "Соленый ветер и волны. Сотри брызги, чтобы увидеть горизонт."
       };
     } else if (bgIndex < 40) {
       return {
+        emoji: "🎨",
+        color: "#9469fa",
         title: "Игра цвета",
         subtitle: "Палитра эмоций скрыта. Очисти фон, чтобы вернуть яркость."
       };
     } else if (bgIndex < 50) {
       return {
+        emoji: "🏔️",
+        color: "#2f855a",
         title: "Величие вершин",
         subtitle: "Свежий воздух и свобода. Сотри туман, чтобы увидеть простор."
       };
     } else if (bgIndex < 60) {
       return {
+        emoji: "🌃",
+        color: "#1f406e",
         title: "Огни мегаполиса",
         subtitle: "Город не спит. Сотри темноту, чтобы найти свет."
       };
     } else {
       return {
+        emoji: "☁️",
+        color: "#7ad1ff",
         title: "Небесная высь",
         subtitle: "Ты на вершине мира. Коснись облаков своей рукой."
       };
@@ -311,7 +324,7 @@ const App: React.FC = () => {
           <div className="absolute top-6 left-6 z-20 pointer-events-none select-none flex flex-col gap-2">
             <div className="bg-black/40 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/10 text-white shadow-2xl flex items-center gap-3">
                <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-sky-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+                  <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: seriesConfig.color }} />
                </div>
                <p className="text-[9px] font-black uppercase tracking-[0.2em]">
                 {progress}%
@@ -335,25 +348,23 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Start Modal - Updated for Apple-style aesthetic */}
+        {/* Start Modal - Updated with series emoji and dynamic colors */}
         {status === GameStatus.START && (
           <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-[#F0F2F5]/80 backdrop-blur-[8px]">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
-              <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
+              <div className="text-[48px] mb-4 leading-none select-none">
+                {seriesConfig.emoji}
               </div>
-              <h2 className="text-xl font-black mb-2 text-zinc-900 tracking-tight uppercase leading-tight">
-                {stageInfo.title}
+              <h2 className="text-xl font-black mb-2 tracking-tight uppercase leading-tight" style={{ color: seriesConfig.color }}>
+                {seriesConfig.title}
               </h2>
-              <p className="text-zinc-500 text-[12px] mb-6 leading-relaxed font-medium uppercase tracking-wider">
-                {stageInfo.subtitle}
+              <p className="text-zinc-500 text-[12px] mb-8 leading-relaxed font-medium uppercase tracking-wider">
+                {seriesConfig.subtitle}
               </p>
               <button 
                 onClick={(e) => { e.stopPropagation(); startGame(); }} 
-                className="w-full bg-sky-500 hover:bg-sky-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition-all text-[12px] tracking-[0.2em] uppercase shadow-lg touch-auto"
+                className="w-full text-white py-[16px] rounded-2xl font-bold active:scale-95 transition-all text-[18px] tracking-widest uppercase shadow-lg touch-auto"
+                style={{ backgroundColor: seriesConfig.color }}
               >
                 Начать
               </button>
@@ -361,7 +372,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Victory Modal - Updated for Apple-style aesthetic */}
+        {/* Victory Modal - Updated with series colors and monochrome dynamic buttons */}
         {showVictoryUI && (
           <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-[#F0F2F5]/80 backdrop-blur-[8px] animate-in fade-in duration-700">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
@@ -370,10 +381,13 @@ const App: React.FC = () => {
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <h2 className="text-xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Чисто</h2>
+              <h2 className="text-xl font-black mb-8 tracking-tighter uppercase" style={{ color: seriesConfig.color }}>
+                Чисто
+              </h2>
               <button 
                 onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
-                className="w-full bg-sky-500 hover:bg-sky-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition-all text-[12px] tracking-widest uppercase shadow-lg touch-auto"
+                className="w-full text-white py-[16px] rounded-2xl font-bold active:scale-95 transition-all text-[18px] tracking-widest uppercase shadow-lg touch-auto"
+                style={{ backgroundColor: seriesConfig.color }}
               >
                 Дальше
               </button>
