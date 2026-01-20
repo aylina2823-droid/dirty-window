@@ -267,7 +267,7 @@ const App: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden flex flex-col pt-[20px] px-[15px] pb-[env(safe-area-inset-bottom,40px)] touch-none overscroll-none"
+      className="fixed inset-0 w-full h-full bg-white overflow-hidden flex flex-col pt-[20px] px-[10px] pb-[calc(env(safe-area-inset-bottom,0px)+60px)] sm:pb-[90px] touch-none overscroll-none"
       onPointerDown={handlePointerDown}
       onPointerMove={(e) => {
         setMousePos({ x: e.clientX, y: e.clientY });
@@ -282,7 +282,7 @@ const App: React.FC = () => {
       {/* The Game Surface (The inner window area) */}
       <div 
         ref={surfaceRef}
-        className="relative flex-1 bg-zinc-900 rounded-[2rem] overflow-hidden shadow-[inset_0_2px_10px_rgba(0,0,0,0.8),0_0_20px_rgba(0,0,0,0.5)] border border-white/5"
+        className="relative flex-1 bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_24px_rgba(0,0,0,0.15)] border border-black/5"
       >
         <img 
           src={currentImageUrl} 
