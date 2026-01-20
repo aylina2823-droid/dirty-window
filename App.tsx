@@ -358,7 +358,8 @@ const App: React.FC = () => {
               <h2 className="text-xl font-black mb-2 tracking-tight uppercase leading-tight" style={{ color: seriesConfig.color }}>
                 {seriesConfig.title}
               </h2>
-              <p className="text-zinc-500 text-[12px] mb-8 leading-relaxed font-medium uppercase tracking-wider">
+              {/* Reduced bottom margin to 20px (mb-5) for a tighter look */}
+              <p className="text-zinc-500 text-[12px] mb-5 leading-relaxed font-medium uppercase tracking-wider">
                 {seriesConfig.subtitle}
               </p>
               <button 
@@ -381,7 +382,8 @@ const App: React.FC = () => {
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <h2 className="text-xl font-black mb-8 tracking-tighter uppercase" style={{ color: seriesConfig.color }}>
+              {/* Reduced bottom margin to 20px (mb-5) for a tighter look */}
+              <h2 className="text-xl font-black mb-5 tracking-tighter uppercase" style={{ color: seriesConfig.color }}>
                 Чисто
               </h2>
               <button 
