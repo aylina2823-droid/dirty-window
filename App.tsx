@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
@@ -57,7 +56,7 @@ const App: React.FC = () => {
     if (bgIndex < 10) {
       return {
         emoji: "🌅",
-        color: "#ff9a00", // Сочный оранжевый
+        color: "#FF8E73", // Мягкий коралловый
         title: "Тихое пробуждение",
         subtitle: "Мир всё еще размыт после сна. Протри, чтобы сфокусироваться."
       };
@@ -348,7 +347,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Start Modal - Updated with series emoji and dynamic colors */}
+        {/* Start Modal */}
         {status === GameStatus.START && (
           <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-[#F0F2F5]/80 backdrop-blur-[8px]">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
@@ -358,7 +357,6 @@ const App: React.FC = () => {
               <h2 className="text-xl font-black mb-2 tracking-tight uppercase leading-tight" style={{ color: seriesConfig.color }}>
                 {seriesConfig.title}
               </h2>
-              {/* Reduced bottom margin to 20px (mb-5) for a tighter look */}
               <p className="text-zinc-500 text-[12px] mb-5 leading-relaxed font-medium uppercase tracking-wider">
                 {seriesConfig.subtitle}
               </p>
@@ -373,18 +371,15 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Victory Modal - Updated with series colors and monochrome dynamic buttons */}
+        {/* Victory Modal - Updated with Sparkles Emoji ✨ and Animation */}
         {showVictoryUI && (
           <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-[#F0F2F5]/80 backdrop-blur-[8px] animate-in fade-in duration-700">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
-              <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+              <div className="text-[60px] leading-none mb-4 select-none animate-sparkle">
+                ✨
               </div>
-              {/* Reduced bottom margin to 20px (mb-5) for a tighter look */}
-              <h2 className="text-xl font-black mb-5 tracking-tighter uppercase" style={{ color: seriesConfig.color }}>
-                Чисто
+              <h2 className="text-xl font-black mb-5 tracking-tighter uppercase" style={{ color: '#3d3d3d' }}>
+                Идеально чисто
               </h2>
               <button 
                 onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
