@@ -6,23 +6,12 @@ import { GameStatus, Point } from './types';
 // Порог очистки 0.85
 const CLEAN_THRESHOLD = 0.85;
 
-// Финальная структура уровней (70 изображений) с кэш-бастером ?v=2:
-// 1-я десятка: файлы 1–10
-// 2-я десятка: файлы 41–50
-// 3-я десятка: файлы 21–30
-// 4-я десятка: файлы 31–40
-// 5-я десятка: файлы 11–20
-// 6-я десятка: файлы 51–60
-// 7-я десятка: файлы 61–70
-const backgroundImages = [
-  ...Array.from({ length: 10 }, (_, i) => i + 1),   // 1-10
-  ...Array.from({ length: 10 }, (_, i) => i + 41),  // 41-50
-  ...Array.from({ length: 10 }, (_, i) => i + 21),  // 21-30
-  ...Array.from({ length: 10 }, (_, i) => i + 31),  // 31-40
-  ...Array.from({ length: 10 }, (_, i) => i + 11),  // 11-20
-  ...Array.from({ length: 10 }, (_, i) => i + 51),  // 51-60
-  ...Array.from({ length: 10 }, (_, i) => i + 61),  // 61-70
-].map(num => `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${num}.jpg?v=2`);
+// Линейная структура уровней (70 изображений):
+// Теперь файлы на GitHub переименованы в строгом порядке сюжета (1.jpg - 70.jpg).
+// Используем простой цикл и кэш-бастер ?v=3.
+const backgroundImages = Array.from({ length: 70 }, (_, i) => i + 1).map(
+  num => `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${num}.jpg?v=3`
+);
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,6 +29,9 @@ const App: React.FC = () => {
   const retryCount = useRef<number>(0);
 
   // Определение текстов этапов по утвержденным диапазонам (каждые 10 уровней)
+  // bgIndex 0-9   (Уровень 1-10)
+  // bgIndex 10-19 (Уровень 11-20)
+  // и т.д.
   const stageInfo = useMemo(() => {
     if (bgIndex < 10) {
       return {
@@ -129,7 +121,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [setupCanvasLayer]);
 
-  // Блокировка нативных жестов скролла и закрытия (разрешаем клики по кнопкам)
+  // Блокировка нативных жестов скролла и закрытия
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
