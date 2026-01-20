@@ -279,7 +279,7 @@ const App: React.FC = () => {
         if (status === GameStatus.PLAYING) calculateProgress(); 
       }}
     >
-      {/* The Game Surface (The inner window area) - No border or shadow as requested */}
+      {/* The Game Surface (The inner window area) */}
       <div 
         ref={surfaceRef}
         className="relative flex-1 bg-zinc-900 rounded-[2.5rem] overflow-hidden"
@@ -335,10 +335,10 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Start Modal */}
+        {/* Start Modal - Updated for Apple-style aesthetic */}
         {status === GameStatus.START && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-black/30 backdrop-blur-[2px]">
-            <div className="bg-white/95 backdrop-blur-3xl p-8 rounded-[2rem] shadow-2xl text-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
+          <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-[#F0F2F5]/80 backdrop-blur-[8px]">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
               <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
@@ -361,10 +361,10 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Victory Modal */}
+        {/* Victory Modal - Updated for Apple-style aesthetic */}
         {showVictoryUI && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-black/60 animate-in fade-in duration-700 backdrop-blur-sm">
-            <div className="bg-white/95 backdrop-blur-3xl p-8 rounded-[2rem] shadow-2xl text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
+          <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-[#F0F2F5]/80 backdrop-blur-[8px] animate-in fade-in duration-700">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
                   <polyline points="20 6 9 17 4 12" />
