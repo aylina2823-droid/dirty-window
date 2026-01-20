@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
@@ -27,7 +28,7 @@ const backgroundImages = Array.from({ length: 70 }, (_, i) => i + 1).map(
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const surfaceRef = useRef<HTMLDivElement>(null);
+  const surfaceRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
@@ -56,14 +57,14 @@ const App: React.FC = () => {
     if (bgIndex < 10) {
       return {
         emoji: "🌅",
-        color: "#FF8E73", // Мягкий коралловый
+        color: "#FF8E73", 
         title: "Тихое пробуждение",
         subtitle: "Мир всё еще размыт после сна. Протри, чтобы сфокусироваться."
       };
     } else if (bgIndex < 20) {
       return {
-        emoji: "🥐",
-        color: "#cc6e1d",
+        emoji: "🍕",
+        color: "#FFB300", // Обновленный цвет по запросу пользователя
         title: "Вкус жизни",
         subtitle: "Ароматы витают в воздухе. Очисти стекло, чтобы увидеть блюдо."
       };
@@ -122,7 +123,7 @@ const App: React.FC = () => {
 
   const setupCanvasLayer = useCallback(() => {
     const canvas = canvasRef.current;
-    const surface = surfaceRef.current;
+    const surface = (canvasRef.current?.parentElement as HTMLDivElement);
     if (!canvas || !surface) return;
     
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -291,9 +292,7 @@ const App: React.FC = () => {
         if (status === GameStatus.PLAYING) calculateProgress(); 
       }}
     >
-      {/* The Game Surface (The inner window area) */}
       <div 
-        ref={surfaceRef}
         className="relative flex-1 bg-zinc-900 rounded-[2.5rem] overflow-hidden"
       >
         <img 
@@ -371,7 +370,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Victory Modal - Updated with Sparkles Emoji ✨ and Animation */}
+        {/* Victory Modal */}
         {showVictoryUI && (
           <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-[#F0F2F5]/80 backdrop-blur-[8px] animate-in fade-in duration-700">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
