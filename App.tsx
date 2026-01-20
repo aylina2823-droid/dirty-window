@@ -3,18 +3,32 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
 
+// Extend window for Telegram
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp: {
+        expand: () => void;
+        ready: () => void;
+        disableVerticalSwipes: () => void;
+        headerColor: string;
+        backgroundColor: string;
+      };
+    };
+  }
+}
+
 // Порог очистки 0.85
 const CLEAN_THRESHOLD = 0.85;
 
 // Линейная структура уровней (70 изображений):
-// Теперь файлы на GitHub переименованы в строгом порядке сюжета (1.jpg - 70.jpg).
-// Используем простой цикл и кэш-бастер ?v=3.
 const backgroundImages = Array.from({ length: 70 }, (_, i) => i + 1).map(
   num => `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${num}.jpg?v=3`
 );
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const surfaceRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
@@ -23,15 +37,23 @@ const App: React.FC = () => {
   const [mousePos, setMousePos] = useState<Point>({ x: -100, y: -100 });
   const [bgIndex, setBgIndex] = useState(0);
   const [isImgLoading, setIsImgLoading] = useState(true);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [surfaceSize, setSurfaceSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   
   const lastCheckTime = useRef<number>(0);
   const retryCount = useRef<number>(0);
 
-  // Определение текстов этапов по утвержденным диапазонам (каждые 10 уровней)
-  // bgIndex 0-9   (Уровень 1-10)
-  // bgIndex 10-19 (Уровень 11-20)
-  // и т.д.
+  // Telegram Initialization
+  useEffect(() => {
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+      // Optional: Prevent swipe to close in TG
+      if (window.Telegram.WebApp.disableVerticalSwipes) {
+        window.Telegram.WebApp.disableVerticalSwipes();
+      }
+    }
+  }, []);
+
   const stageInfo = useMemo(() => {
     if (bgIndex < 10) {
       return {
@@ -75,7 +97,6 @@ const App: React.FC = () => {
     return backgroundImages[bgIndex];
   }, [bgIndex]);
 
-  // Предзагрузка следующего изображения
   useEffect(() => {
     const nextIndex = (bgIndex + 1) % backgroundImages.length;
     const nextUrl = backgroundImages[nextIndex];
@@ -83,30 +104,35 @@ const App: React.FC = () => {
     img.src = nextUrl;
   }, [bgIndex]);
 
-  // Динамический размер кисти
   const currentBrushRadius = useMemo(() => {
-    return windowWidth < 768 ? 50 : 80;
-  }, [windowWidth]);
+    return surfaceSize.width < 768 ? 50 : 80;
+  }, [surfaceSize.width]);
 
   const setupCanvasLayer = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const surface = surfaceRef.current;
+    if (!canvas || !surface) return;
+    
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const width = surface.clientWidth;
+    const height = surface.clientHeight;
+    setSurfaceSize({ width, height });
+
+    canvas.width = width;
+    canvas.height = height;
 
     ctx.globalCompositeOperation = 'source-over';
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
     gradient.addColorStop(0, 'rgba(235, 240, 250, 0.98)');
     gradient.addColorStop(1, 'rgba(215, 220, 235, 0.96)');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
     for (let i = 0; i < 8000; i++) {
-      ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
+      ctx.fillRect(Math.random() * width, Math.random() * height, 1, 1);
     }
     setProgress(0);
   }, []);
@@ -114,14 +140,12 @@ const App: React.FC = () => {
   useEffect(() => {
     setupCanvasLayer();
     const handleResize = () => {
-      setWindowWidth(window.innerWidth);
       setupCanvasLayer();
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [setupCanvasLayer]);
 
-  // Блокировка нативных жестов скролла и закрытия
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -145,7 +169,6 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Эффект для задержки появления кнопки "Следующее окно"
   useEffect(() => {
     let timer: number;
     if (status === GameStatus.CLEAN) {
@@ -170,7 +193,6 @@ const App: React.FC = () => {
     retryCount.current = 0;
     setupCanvasLayer();
     
-    // Срабатывает каждые 10 уровней (0, 10, 20...)
     if (nextIdx % 10 === 0) {
       setStatus(GameStatus.START);
     } else {
@@ -199,11 +221,15 @@ const App: React.FC = () => {
     }
   }, [status]);
 
-  const scrub = (x: number, y: number) => {
+  const scrub = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas || status !== GameStatus.PLAYING) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
 
     ctx.globalCompositeOperation = 'destination-out';
     const grad = ctx.createRadialGradient(x, y, 0, x, y, currentBrushRadius);
@@ -241,7 +267,7 @@ const App: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden touch-none overscroll-none"
+      className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden flex flex-col pt-[20px] px-[15px] pb-[env(safe-area-inset-bottom,40px)] touch-none overscroll-none"
       onPointerDown={handlePointerDown}
       onPointerMove={(e) => {
         setMousePos({ x: e.clientX, y: e.clientY });
@@ -253,102 +279,108 @@ const App: React.FC = () => {
         if (status === GameStatus.PLAYING) calculateProgress(); 
       }}
     >
-      <img 
-        src={currentImageUrl} 
-        alt=""
-        className={`absolute inset-0 w-full h-full object-cover block pointer-events-none z-0 transition-opacity duration-700 ${isImgLoading ? 'opacity-0' : 'opacity-100'}`}
-        style={{ 
-          filter: status === GameStatus.CLEAN ? 'none' : `blur(${Math.max(0, 25 - progress * 1.5)}px)`,
-          transition: 'filter 0.3s ease-out, opacity 0.7s ease-in'
-        }}
-        onLoad={() => setIsImgLoading(false)}
-        onError={handleImageError}
-      />
+      {/* The Game Surface (The inner window area) */}
+      <div 
+        ref={surfaceRef}
+        className="relative flex-1 bg-zinc-900 rounded-[2rem] overflow-hidden shadow-[inset_0_2px_10px_rgba(0,0,0,0.8),0_0_20px_rgba(0,0,0,0.5)] border border-white/5"
+      >
+        <img 
+          src={currentImageUrl} 
+          alt=""
+          className={`absolute inset-0 w-full h-full object-cover block pointer-events-none z-0 transition-opacity duration-700 ${isImgLoading ? 'opacity-0' : 'opacity-100'}`}
+          style={{ 
+            filter: status === GameStatus.CLEAN ? 'none' : `blur(${Math.max(0, 25 - progress * 1.5)}px)`,
+            transition: 'filter 0.3s ease-out, opacity 0.7s ease-in'
+          }}
+          onLoad={() => setIsImgLoading(false)}
+          onError={handleImageError}
+        />
 
-      {isImgLoading && (
-        <div className="absolute inset-0 z-0 flex items-center justify-center text-white/20 text-[10px] uppercase tracking-widest animate-pulse font-bold">
-          Загрузка...
-        </div>
-      )}
-
-      <canvas 
-        ref={canvasRef} 
-        className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 touch-none overscroll-none ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
-      />
-
-      {status === GameStatus.PLAYING && (
-        <div className="absolute top-6 left-6 z-20 pointer-events-none select-none flex flex-col gap-2">
-          <div className="bg-black/40 backdrop-blur-xl px-5 py-2 rounded-2xl border border-white/10 text-white shadow-2xl flex items-center gap-3">
-             <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-sky-500 transition-all duration-300" style={{ width: `${progress}%` }} />
-             </div>
-             <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-              {progress}%
-            </p>
+        {isImgLoading && (
+          <div className="absolute inset-0 z-0 flex items-center justify-center text-white/20 text-[10px] uppercase tracking-widest animate-pulse font-bold">
+            Загрузка...
           </div>
-        </div>
-      )}
+        )}
 
-      {status === GameStatus.PLAYING && (
-        <div className="absolute top-6 right-6 z-20">
-          <button 
-            onClick={(e) => { e.stopPropagation(); setupCanvasLayer(); }} 
-            className="bg-black/40 hover:bg-black/50 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90 touch-auto"
-            title="Запотеть заново"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
-          </button>
-        </div>
-      )}
+        <canvas 
+          ref={canvasRef} 
+          className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 touch-none overscroll-none ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
+        />
 
-      {/* Начальный экран */}
-      {status === GameStatus.START && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/20 backdrop-blur-[2px]">
-          <div className="bg-white/90 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
-            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+        {status === GameStatus.PLAYING && (
+          <div className="absolute top-6 left-6 z-20 pointer-events-none select-none flex flex-col gap-2">
+            <div className="bg-black/40 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/10 text-white shadow-2xl flex items-center gap-3">
+               <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-sky-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+               </div>
+               <p className="text-[9px] font-black uppercase tracking-[0.2em]">
+                {progress}%
+              </p>
             </div>
-            <h2 className="text-2xl font-black mb-2 text-zinc-900 tracking-tight uppercase leading-tight">
-              {stageInfo.title}
-            </h2>
-            <p className="text-zinc-500 text-[13px] mb-8 leading-relaxed font-medium uppercase tracking-wider">
-              {stageInfo.subtitle}
-            </p>
+          </div>
+        )}
+
+        {status === GameStatus.PLAYING && (
+          <div className="absolute top-6 right-6 z-20">
             <button 
-              onClick={(e) => { e.stopPropagation(); startGame(); }} 
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-[0.2em] uppercase shadow-xl touch-auto"
+              onClick={(e) => { e.stopPropagation(); setupCanvasLayer(); }} 
+              className="bg-black/40 hover:bg-black/50 p-4 rounded-2xl border border-white/10 text-white shadow-2xl backdrop-blur-xl transition-all active:scale-90 touch-auto"
+              title="Запотеть заново"
             >
-              Начать
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+              </svg>
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Экран победы (кнопка "Дальше") */}
-      {showVictoryUI && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-black/50 animate-in fade-in duration-700 backdrop-blur-md">
-          <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+        {/* Start Modal */}
+        {status === GameStatus.START && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-black/30 backdrop-blur-[2px]">
+            <div className="bg-white/95 backdrop-blur-3xl p-8 rounded-[2rem] shadow-2xl text-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
+              <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-black mb-2 text-zinc-900 tracking-tight uppercase leading-tight">
+                {stageInfo.title}
+              </h2>
+              <p className="text-zinc-500 text-[12px] mb-6 leading-relaxed font-medium uppercase tracking-wider">
+                {stageInfo.subtitle}
+              </p>
+              <button 
+                onClick={(e) => { e.stopPropagation(); startGame(); }} 
+                className="w-full bg-sky-500 hover:bg-sky-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition-all text-[12px] tracking-[0.2em] uppercase shadow-lg touch-auto"
+              >
+                Начать
+              </button>
             </div>
-            <h2 className="text-2xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Чисто</h2>
-            <button 
-              onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-5 rounded-2xl font-bold active:scale-95 transition-all text-[14px] tracking-widest uppercase shadow-xl touch-auto"
-            >
-              Следующее окно
-            </button>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Victory Modal */}
+        {showVictoryUI && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-black/60 animate-in fade-in duration-700 backdrop-blur-sm">
+            <div className="bg-white/95 backdrop-blur-3xl p-8 rounded-[2rem] shadow-2xl text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
+              <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-black mb-6 text-zinc-900 tracking-tighter uppercase">Чисто</h2>
+              <button 
+                onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
+                className="w-full bg-sky-500 hover:bg-sky-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition-all text-[12px] tracking-widest uppercase shadow-lg touch-auto"
+              >
+                Дальше
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div 
         className="cursor-brush" 
