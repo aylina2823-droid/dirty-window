@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
@@ -28,7 +27,6 @@ const backgroundImages = Array.from({ length: 70 }, (_, i) => i + 1).map(
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const surfaceRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
@@ -64,7 +62,7 @@ const App: React.FC = () => {
     } else if (bgIndex < 20) {
       return {
         emoji: "🍕",
-        color: "#FFB300", // Обновленный цвет по запросу пользователя
+        color: "#FFB300", 
         title: "Вкус жизни",
         subtitle: "Ароматы витают в воздухе. Очисти стекло, чтобы увидеть блюдо."
       };
@@ -280,7 +278,7 @@ const App: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 w-full h-full bg-white overflow-hidden flex flex-col pt-[20px] px-[10px] pb-[calc(env(safe-area-inset-bottom,0px)+60px)] sm:pb-[90px] touch-none overscroll-none"
+      className="fixed inset-0 w-full h-full bg-[var(--tg-theme-bg-color,#ffffff)] overflow-hidden flex flex-col pt-[20px] px-[10px] pb-[calc(env(safe-area-inset-bottom,0px)+60px)] sm:pb-[90px] touch-none overscroll-none"
       onPointerDown={handlePointerDown}
       onPointerMove={(e) => {
         setMousePos({ x: e.clientX, y: e.clientY });
