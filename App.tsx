@@ -279,10 +279,10 @@ const App: React.FC = () => {
         if (status === GameStatus.PLAYING) calculateProgress(); 
       }}
     >
-      {/* The Game Surface (The inner window area) */}
+      {/* The Game Surface (The inner window area) - No border or shadow as requested */}
       <div 
         ref={surfaceRef}
-        className="relative flex-1 bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_24px_rgba(0,0,0,0.15)] border border-black/5"
+        className="relative flex-1 bg-zinc-900 rounded-[2.5rem] overflow-hidden"
       >
         <img 
           src={currentImageUrl} 
