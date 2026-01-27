@@ -185,7 +185,7 @@ const App: React.FC = () => {
     if (status === GameStatus.CLEAN) {
       timer = window.setTimeout(() => {
         setShowVictoryUI(true);
-      }, 2500);
+      }, 1000); // Показываем панель через 1 секунду после начала исчезновения тумана
     }
     return () => clearTimeout(timer);
   }, [status]);
@@ -208,6 +208,31 @@ const App: React.FC = () => {
       setStatus(GameStatus.START);
     } else {
       setStatus(GameStatus.PLAYING);
+    }
+  };
+
+  const downloadImage = async () => {
+    try {
+      const response = await fetch(currentImageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `window-cleaning-level-${bgIndex + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Failed to download image", e);
+      // Fallback
+      const link = document.createElement('a');
+      link.href = currentImageUrl;
+      link.target = "_blank";
+      link.download = `window-cleaning-level-${bgIndex + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -278,7 +303,7 @@ const App: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 w-full h-full bg-[var(--tg-theme-bg-color,#ffffff)] overflow-hidden flex flex-col pt-[20px] px-[10px] pb-[calc(env(safe-area-inset-bottom,0px)+60px)] sm:pb-[90px] touch-none overscroll-none"
+      className="fixed inset-0 w-full h-full bg-[var(--tg-theme-bg-color,#ffffff)] overflow-hidden flex flex-col pt-[20px] px-[10px] pb-[calc(env(safe-area-inset-bottom,0px)+80px)] sm:pb-[110px] touch-none overscroll-none"
       onPointerDown={handlePointerDown}
       onPointerMove={(e) => {
         setMousePos({ x: e.clientX, y: e.clientY });
@@ -367,27 +392,43 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
 
-        {/* Victory Modal */}
-        {showVictoryUI && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-[#F0F2F5]/80 backdrop-blur-[8px] animate-in fade-in duration-700">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-center max-w-xs w-full scale-up-center animate-in zoom-in duration-500">
-              <div className="text-[60px] leading-none mb-4 select-none animate-sparkle">
-                ✨
-              </div>
-              <h2 className="text-xl font-black mb-5 tracking-tighter uppercase" style={{ color: '#3d3d3d' }}>
-                Идеально чисто
-              </h2>
-              <button 
-                onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
-                className="w-full text-white py-[16px] rounded-2xl font-bold active:scale-95 transition-all text-[18px] tracking-widest uppercase shadow-lg touch-auto"
-                style={{ backgroundColor: seriesConfig.color }}
-              >
-                Дальше
-              </button>
-            </div>
-          </div>
-        )}
+      {/* Victory Bottom Control Panel */}
+      <div 
+        className={`fixed left-0 right-0 bottom-0 bg-[var(--tg-theme-bg-color,#ffffff)] px-6 py-4 transition-transform duration-500 ease-out z-40 border-t border-black/5 flex items-center justify-between gap-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] ${showVictoryUI ? 'translate-y-0' : 'translate-y-full'}`}
+      >
+        <div className="flex flex-col">
+          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 select-none">
+            ИДЕАЛЬНО ЧИСТО ✨
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={(e) => { e.stopPropagation(); downloadImage(); }} 
+            className="w-12 h-12 flex items-center justify-center bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-full transition-all active:scale-90 touch-auto"
+            title="Скачать"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </button>
+
+          <button 
+            onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
+            className="px-8 h-12 flex items-center gap-2 text-white font-bold rounded-full transition-all active:scale-95 shadow-md uppercase tracking-wider text-[14px] touch-auto"
+            style={{ backgroundColor: seriesConfig.color }}
+          >
+            <span>ДАЛЬШЕ</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div 
