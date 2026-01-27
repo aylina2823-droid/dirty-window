@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { audioService } from './services/audioService';
 import { GameStatus, Point } from './types';
 
-// Extend window for Telegram
+// Extend window for Telegram and Navigator for Share API
 declare global {
   interface Window {
     Telegram?: {
@@ -185,7 +185,7 @@ const App: React.FC = () => {
     if (status === GameStatus.CLEAN) {
       timer = window.setTimeout(() => {
         setShowVictoryUI(true);
-      }, 1000); // Показываем панель через 1 секунду после начала исчезновения тумана
+      }, 1000); 
     }
     return () => clearTimeout(timer);
   }, [status]);
@@ -215,24 +215,32 @@ const App: React.FC = () => {
     try {
       const response = await fetch(currentImageUrl);
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `window-cleaning-level-${bgIndex + 1}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const fileName = `window-cleaning-level-${bgIndex + 1}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+      // Check for Web Share API support (best for iPhone/Telegram)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Моё идеально чистое окно',
+          text: 'Посмотри, как красиво!'
+        });
+      } else {
+        // Fallback for browsers without Share API (like desktop)
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = "_blank"; // Opens in new tab to avoid closing the app
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
     } catch (e) {
-      console.error("Failed to download image", e);
-      // Fallback
-      const link = document.createElement('a');
-      link.href = currentImageUrl;
-      link.target = "_blank";
-      link.download = `window-cleaning-level-${bgIndex + 1}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      console.error("Failed to share/download image", e);
+      // Final fallback: try to open in new tab
+      window.open(currentImageUrl, '_blank');
     }
   };
 
