@@ -25,6 +25,16 @@ const backgroundImages = Array.from({ length: 70 }, (_, i) => i + 1).map(
   num => `https://raw.githubusercontent.com/aylina2823-droid/dirty-window/main/public/backgrounds/${num}.jpg?v=3`
 );
 
+const seriesList = [
+  { emoji: "🌅", name: "Тихое пробуждение", color: "#FF8E73" },
+  { emoji: "🥐", name: "Вкус жизни", color: "#FFB300" },
+  { emoji: "🌊", name: "Дыхание моря", color: "#65dbcc" },
+  { emoji: "🎨", name: "Игра цвета", color: "#9469fa" },
+  { emoji: "🏔️", name: "Величие вершин", color: "#2f855a" },
+  { emoji: "🌃", name: "Огни мегаполиса", color: "#1f406e" },
+  { emoji: "☁️", name: "Небесная высь", color: "#7ad1ff" },
+];
+
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,58 +61,22 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const currentSeriesIndex = Math.floor(bgIndex / 10);
+  const levelInSeries = (bgIndex % 10) + 1;
+
   const seriesConfig = useMemo(() => {
-    if (bgIndex < 10) {
-      return {
-        emoji: "🌅",
-        color: "#FF8E73", 
-        title: "Тихое пробуждение",
-        subtitle: "Мир всё еще размыт после сна. Протри, чтобы сфокусироваться."
-      };
-    } else if (bgIndex < 20) {
-      return {
-        emoji: "🍕",
-        color: "#FFB300", 
-        title: "Вкус жизни",
-        subtitle: "Ароматы витают в воздухе. Очисти стекло, чтобы увидеть блюдо."
-      };
-    } else if (bgIndex < 30) {
-      return {
-        emoji: "🌊",
-        color: "#65dbcc",
-        title: "Дыхание моря",
-        subtitle: "Соленый ветер и волны. Сотри брызги, чтобы увидеть горизонт."
-      };
-    } else if (bgIndex < 40) {
-      return {
-        emoji: "🎨",
-        color: "#9469fa",
-        title: "Игра цвета",
-        subtitle: "Палитра эмоций скрыта. Очисти фон, чтобы вернуть яркость."
-      };
-    } else if (bgIndex < 50) {
-      return {
-        emoji: "🏔️",
-        color: "#2f855a",
-        title: "Величие вершин",
-        subtitle: "Свежий воздух и свобода. Сотри туман, чтобы увидеть простор."
-      };
-    } else if (bgIndex < 60) {
-      return {
-        emoji: "🌃",
-        color: "#1f406e",
-        title: "Огни мегаполиса",
-        subtitle: "Город не спит. Сотри темноту, чтобы найти свет."
-      };
-    } else {
-      return {
-        emoji: "☁️",
-        color: "#7ad1ff",
-        title: "Небесная высь",
-        subtitle: "Ты на вершине мира. Коснись облаков своей рукой."
-      };
-    }
-  }, [bgIndex]);
+    const config = seriesList[currentSeriesIndex];
+    return {
+      ...config,
+      subtitle: config.name === "Тихое пробуждение" ? "Мир всё еще размыт после сна. Протри, чтобы сфокусироваться." :
+                config.name === "Вкус жизни" ? "Ароматы витают в воздухе. Очисти стекло, чтобы увидеть блюдо." :
+                config.name === "Дыхание моря" ? "Соленый ветер и волны. Сотри брызги, чтобы увидеть горизонт." :
+                config.name === "Игра цвета" ? "Палитра эмоций скрыта. Очисти фон, чтобы вернуть яркость." :
+                config.name === "Величие вершин" ? "Свежий воздух и свобода. Сотри туман, чтобы увидеть простор." :
+                config.name === "Огни мегаполиса" ? "Город не спит. Сотри темноту, чтобы найти свет." :
+                "Ты на вершине мира. Коснись облаков своей рукой."
+    };
+  }, [currentSeriesIndex]);
 
   const currentImageUrl = useMemo(() => {
     return backgroundImages[bgIndex];
@@ -218,7 +192,6 @@ const App: React.FC = () => {
       const fileName = `window-cleaning-level-${bgIndex + 1}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });
 
-      // Check for Web Share API support (best for iPhone/Telegram)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -226,11 +199,10 @@ const App: React.FC = () => {
           text: 'Посмотри, как красиво!'
         });
       } else {
-        // Fallback for browsers without Share API (like desktop)
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.target = "_blank"; // Opens in new tab to avoid closing the app
+        link.target = "_blank";
         link.download = fileName;
         document.body.appendChild(link);
         link.click();
@@ -239,7 +211,6 @@ const App: React.FC = () => {
       }
     } catch (e) {
       console.error("Failed to share/download image", e);
-      // Final fallback: try to open in new tab
       window.open(currentImageUrl, '_blank');
     }
   };
@@ -311,7 +282,7 @@ const App: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 w-full h-full bg-[var(--tg-theme-bg-color,#ffffff)] overflow-hidden flex flex-col pt-[20px] px-[10px] pb-[calc(env(safe-area-inset-bottom,0px)+80px)] sm:pb-[110px] touch-none overscroll-none"
+      className="fixed inset-0 w-full h-full bg-[var(--tg-theme-bg-color,#ffffff)] overflow-hidden flex flex-col pt-[calc(env(safe-area-inset-top,0px)+10px)] px-[10px] pb-[calc(env(safe-area-inset-bottom,0px)+80px)] sm:pb-[110px] touch-none overscroll-none"
       onPointerDown={handlePointerDown}
       onPointerMove={(e) => {
         setMousePos({ x: e.clientX, y: e.clientY });
@@ -323,13 +294,31 @@ const App: React.FC = () => {
         if (status === GameStatus.PLAYING) calculateProgress(); 
       }}
     >
-      <div 
-        className="relative flex-1 bg-zinc-900 rounded-[2.5rem] overflow-hidden"
-      >
+      {/* Top HUD */}
+      <div className="flex flex-col items-center mb-3 select-none">
+        <div className="bg-black/5 dark:bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col items-center gap-1 shadow-sm">
+          <p className="text-[11px] font-black uppercase tracking-widest flex items-center gap-1" style={{ color: seriesConfig.color }}>
+            <span>{seriesConfig.name}</span>
+            <span className="opacity-60">({levelInSeries}/10)</span>
+          </p>
+          <div className="flex items-center gap-3 mt-0.5">
+            {seriesList.map((item, idx) => (
+              <span 
+                key={idx} 
+                className={`text-[14px] transition-all duration-300 ${idx === currentSeriesIndex ? 'scale-125 opacity-100 filter-none' : idx < currentSeriesIndex ? 'scale-100 opacity-100 grayscale-0' : 'scale-100 opacity-30 grayscale'}`}
+              >
+                {item.emoji}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative flex-1 bg-zinc-900 rounded-[2.5rem] overflow-hidden">
         <img 
           src={currentImageUrl} 
           alt=""
-          className={`absolute inset-0 w-full h-full object-cover block pointer-events-none z-0 transition-opacity duration-700 ${isImgLoading ? 'opacity-0' : 'opacity-100'}`}
+          className={`absolute block top-0 left-0 w-full h-full object-cover pointer-events-none z-0 transition-opacity duration-700 ${isImgLoading ? 'opacity-0' : 'opacity-100'}`}
           style={{ 
             filter: status === GameStatus.CLEAN ? 'none' : `blur(${Math.max(0, 25 - progress * 1.5)}px)`,
             transition: 'filter 0.3s ease-out, opacity 0.7s ease-in'
@@ -346,7 +335,7 @@ const App: React.FC = () => {
 
         <canvas 
           ref={canvasRef} 
-          className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 touch-none overscroll-none ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
+          className={`absolute block top-0 left-0 w-full h-full z-10 pointer-events-none transition-opacity duration-1000 touch-none overscroll-none ${status === GameStatus.CLEAN ? 'opacity-0' : 'opacity-100'}`} 
         />
 
         {status === GameStatus.PLAYING && (
@@ -385,7 +374,7 @@ const App: React.FC = () => {
                 {seriesConfig.emoji}
               </div>
               <h2 className="text-xl font-black mb-2 tracking-tight uppercase leading-tight" style={{ color: seriesConfig.color }}>
-                {seriesConfig.title}
+                {seriesConfig.name}
               </h2>
               <p className="text-zinc-500 text-[12px] mb-5 leading-relaxed font-medium uppercase tracking-wider">
                 {seriesConfig.subtitle}
@@ -408,7 +397,7 @@ const App: React.FC = () => {
       >
         <button 
           onClick={(e) => { e.stopPropagation(); downloadImage(); }} 
-          className="w-12 h-12 flex items-center justify-center bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-full transition-all active:scale-90 touch-auto"
+          className="w-12 h-12 flex items-center justify-center bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--tg-theme-text-color,#1c1c1c)] rounded-full transition-all active:scale-90 touch-auto"
           title="Поделиться"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -420,7 +409,7 @@ const App: React.FC = () => {
 
         <button 
           onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
-          className="px-8 h-12 flex items-center gap-2 text-white font-bold rounded-full transition-all active:scale-95 shadow-md uppercase tracking-wider text-[14px] touch-auto"
+          className="px-10 h-12 flex items-center gap-2 text-white font-bold rounded-full transition-all active:scale-95 shadow-md uppercase tracking-wider text-[14px] touch-auto"
           style={{ backgroundColor: seriesConfig.color }}
         >
           <span>ДАЛЬШЕ</span>
