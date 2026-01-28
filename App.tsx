@@ -404,39 +404,31 @@ const App: React.FC = () => {
 
       {/* Victory Bottom Control Panel */}
       <div 
-        className={`fixed left-0 right-0 bottom-0 bg-[var(--tg-theme-bg-color,#ffffff)] px-6 py-4 transition-transform duration-500 ease-out z-40 border-t border-black/5 flex items-center justify-between gap-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] ${showVictoryUI ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`fixed left-0 right-0 bottom-0 bg-[var(--tg-theme-bg-color,#ffffff)] px-6 py-4 transition-transform duration-500 ease-out z-40 border-t border-black/5 flex items-center justify-center gap-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] ${showVictoryUI ? 'translate-y-0' : 'translate-y-full'}`}
       >
-        <div className="flex flex-col">
-          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 select-none">
-            ИДЕАЛЬНО ЧИСТО ✨
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={(e) => { e.stopPropagation(); downloadImage(); }} 
-            className="w-12 h-12 flex items-center justify-center bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-full transition-all active:scale-90 touch-auto"
-            title="Скачать"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-          </button>
+        <button 
+          onClick={(e) => { e.stopPropagation(); downloadImage(); }} 
+          className="w-12 h-12 flex items-center justify-center bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-full transition-all active:scale-90 touch-auto"
+          title="Поделиться"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </button>
 
-          <button 
-            onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
-            className="px-8 h-12 flex items-center gap-2 text-white font-bold rounded-full transition-all active:scale-95 shadow-md uppercase tracking-wider text-[14px] touch-auto"
-            style={{ backgroundColor: seriesConfig.color }}
-          >
-            <span>ДАЛЬШЕ</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </button>
-        </div>
+        <button 
+          onClick={(e) => { e.stopPropagation(); nextWindow(); }} 
+          className="px-8 h-12 flex items-center gap-2 text-white font-bold rounded-full transition-all active:scale-95 shadow-md uppercase tracking-wider text-[14px] touch-auto"
+          style={{ backgroundColor: seriesConfig.color }}
+        >
+          <span>ДАЛЬШЕ</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        </button>
       </div>
 
       <div 
